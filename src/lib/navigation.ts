@@ -11,10 +11,11 @@ import {
   BarChart3,
   type LucideIcon,
 } from "lucide-react";
+import type { LinkProps } from "@tanstack/react-router";
 
 export type NavItem = {
   label: string;
-  to: string;
+  to: LinkProps["to"];
   icon: LucideIcon;
   /** Módulo já implementado (false = navegação preparada para o próximo passo). */
   ready: boolean;
