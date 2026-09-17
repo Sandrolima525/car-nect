@@ -15,7 +15,7 @@ import type { LinkProps } from "@tanstack/react-router";
 
 export type NavItem = {
   label: string;
-  to: LinkProps["to"];
+  to: NonNullable<LinkProps["to"]>;
   icon: LucideIcon;
   /** Módulo já implementado (false = navegação preparada para o próximo passo). */
   ready: boolean;
