@@ -12,6 +12,7 @@ type Appointment = {
   id: string;
   customer_name: string;
   customer_phone: string | null;
+  appointment_date: string;
   appointment_time: string;
   status: string;
   service: { name: string; price: number; estimated_duration: number | null } | null;
@@ -23,6 +24,7 @@ const today = () => new Date().toLocaleDateString("en-CA");
 function DashboardPage() {
   const [date] = useState(today());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [upcoming, setUpcoming] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -32,12 +34,23 @@ function DashboardPage() {
       const companyId = await getCurrentCompanyId();
       const { data, error: queryError } = await supabase
         .from("appointments")
-        .select("id,customer_name,customer_id,customer_phone,appointment_time,status,service:services(name,price,estimated_duration)")
+        .select("id,customer_name,customer_id,customer_phone,appointment_date,appointment_time,status,service:services(name,price,estimated_duration)")
         .eq("company_id", companyId)
         .eq("appointment_date", date)
         .order("appointment_time");
       if (queryError) throw queryError;
+      const { data: futureData, error: futureError } = await supabase
+        .from("appointments")
+        .select("id,customer_name,customer_phone,appointment_date,appointment_time,status,service:services(name,price,estimated_duration)")
+        .eq("company_id", companyId)
+        .gt("appointment_date", date)
+        .neq("status", "cancelled")
+        .order("appointment_date")
+        .order("appointment_time")
+        .limit(5);
+      if (futureError) throw futureError;
       setAppointments((data ?? []) as unknown as Appointment[]);
+      setUpcoming((futureData ?? []) as unknown as Appointment[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar o dashboard.");
     } finally {
@@ -127,6 +140,31 @@ function DashboardPage() {
                     </>
                   )}
                 </div>
+              </div>
+            ))}</div>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <div><h3 className="font-semibold">Próximos agendamentos</h3><p className="text-sm text-muted-foreground">Feitos pela agenda interna ou pelo link público.</p></div>
+            <Button variant="outline" size="sm" asChild><Link to="/agenda">Ver agenda completa</Link></Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loading ? <div className="p-6 text-sm text-muted-foreground">Carregando...</div> :
+            upcoming.length === 0 ? <div className="p-6 text-sm text-muted-foreground">Nenhum agendamento futuro.</div> :
+            <div className="divide-y">{upcoming.map((a) => (
+              <div key={a.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="rounded-xl bg-primary/10 px-3 py-2 text-center">
+                    <p className="text-xs font-semibold text-primary">{new Date(a.appointment_date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</p>
+                    <p className="text-sm font-bold">{a.appointment_time.slice(0, 5)}</p>
+                  </div>
+                  <div className="min-w-0"><p className="truncate font-medium">{a.customer_name}</p><p className="text-xs text-muted-foreground">{a.service?.name ?? "Serviço"} · {a.status === "pending" ? "Pendente" : "Confirmado"}</p></div>
+                </div>
+                <Button variant="outline" size="sm" asChild><Link to="/agenda">Abrir agenda</Link></Button>
               </div>
             ))}</div>}
         </CardContent>
