@@ -41,7 +41,7 @@ function PublicBookingPage() {
 
   const compatibleServices = useMemo(() => services.filter(s => !vehicleCategory || !s.vehicle_category || s.vehicle_category === "all" || s.vehicle_category === vehicleCategory), [services, vehicleCategory]);
   const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
-  const baseServices = useMemo(() => compatibleServices.filter(s => (s as any).category !== "Adicional"), [compatibleServices]);
+  const baseServices = useMemo(() => compatibleServices.filter(s => s.category !== "Adicional"), [compatibleServices]);
   const addOnServices = useMemo(() => compatibleServices.filter(s => (s as any).category === "Adicional"), [compatibleServices]);
   const totalDuration = selectedServices.reduce((sum, s) => sum + (s.estimated_duration ?? 60), 0);
   const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price), 0);
@@ -55,7 +55,7 @@ function PublicBookingPage() {
         const c = await supabase.from("companies").select("id,name,trade_name,phone,whatsapp_number,logo_url,brand_colors").eq("public_booking_slug", slug).eq("public_booking_enabled", true).maybeSingle();
         if (c.error) throw c.error;
         if (!c.data) throw new Error("Página de agendamento não encontrada.");
-        const s = await supabase.from("services").select("id,name,price,estimated_duration,vehicle_category").eq("company_id", c.data.id).eq("active", true).order("name");
+        const s = await supabase.from("services").select("id,name,price,estimated_duration,vehicle_category,category").eq("company_id", c.data.id).eq("active", true).order("name");
         if (s.error) throw s.error;
         setCompany(c.data as Company); setThemeBrand({ ...DEFAULT_BRAND, ...((c.data.brand_colors as Partial<BrandColors> | null) ?? {}) }); setServices((s.data ?? []) as Service[]);
       } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a página."); }
