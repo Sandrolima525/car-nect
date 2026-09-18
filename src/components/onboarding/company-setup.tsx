@@ -24,20 +24,33 @@ export function CompanySetup() {
     setLoading(true);
     setError(null);
 
-    const args: { _name: string } & Record<string, string> = { _name: name };
-    if (tradeName) args["_trade_name"] = tradeName;
-    if (document) args["_document"] = document;
-    if (phone) args["_phone"] = phone;
-    if (user?.email) args["_email"] = user.email;
-    if (city) args["_city"] = city;
-    if (state) args["_state"] = state;
+    const { data: company, error: companyError } = await supabase.from("companies").insert({
+      name: name.trim(),
+      trade_name: tradeName.trim() || null,
+      document: document.trim() || null,
+      phone: phone.trim() || null,
+      email: user?.email ?? null,
+      city: city.trim() || null,
+      state: state.trim() || null,
+      owner_id: user?.id ?? "",
+    }).select("id").single();
 
-    const { error: rpcError } = await supabase.rpc("create_company_for_current_user", args);
-
-    setLoading(false);
-
-    if (rpcError) {
+    if (companyError || !company) {
+      setLoading(false);
       setError("Não foi possível cadastrar a empresa. Revise os dados e tente novamente.");
+      return;
+    }
+
+    const { error: profileError } = await supabase.from("profiles").update({
+      company_id: company.id,
+      role: "owner",
+      active: true,
+    }).eq("user_id", user?.id ?? "");
+
+    if (profileError) {
+      await supabase.from("companies").delete().eq("id", company.id);
+      setLoading(false);
+      setError("Empresa criada, mas não foi possível vincular sua conta. Tente novamente.");
       return;
     }
 
