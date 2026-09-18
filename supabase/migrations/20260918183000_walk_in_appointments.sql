@@ -21,7 +21,7 @@ begin
  if _vehicle_category not in ('Hatch','Sedan','SUV/Picape') then raise exception 'Categoria de veículo inválida'; end if;
  select c.business_hours,greatest(1,coalesce(c.simultaneous_capacity,1)) into v_business,v_capacity from public.companies c where c.id=_company_id and c.active=true;
  if v_business is null then raise exception 'Empresa não encontrada'; end if;
- v_day_key:=lower(to_char(_date,'Dy'));
+ v_day_key:=case extract(dow from _date)::int when 0 then 'sun' when 1 then 'mon' when 2 then 'tue' when 3 then 'wed' when 4 then 'thu' when 5 then 'fri' else 'sat' end;
  v_open:=v_business->v_day_key->>'open'; v_close:=v_business->v_day_key->>'close';
  if coalesce((v_business->v_day_key->>'enabled')::boolean,false)=false or v_open is null or v_close is null then raise exception 'Empresa fechada neste dia'; end if;
  if _time<v_open::time or _time>=v_close::time then raise exception 'Horário fora do funcionamento'; end if;
