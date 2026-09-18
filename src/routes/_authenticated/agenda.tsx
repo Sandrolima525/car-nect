@@ -48,7 +48,8 @@ function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [customerFound, setCustomerFound] = useState(false);\n  const [publicSlug, setPublicSlug] = useState("");
+  const [customerFound, setCustomerFound] = useState(false);
+  const [publicSlug, setPublicSlug] = useState("");
 
   const selectedService = useMemo(() => services.find(s => s.id === serviceId), [services, serviceId]);
 
@@ -63,7 +64,9 @@ function AgendaPage() {
         supabase.from("customers").select("id,name,phone").eq("company_id", id).order("name").limit(2000),
       ]);
       if (a.error) throw a.error; if (s.error) throw s.error; if (c.error) throw c.error;
-      setAppointments((a.data ?? []) as unknown as Appointment[]);\n      const company = await supabase.from("companies").select("public_booking_slug").eq("id", id).single();\n      if (!company.error) setPublicSlug(company.data?.public_booking_slug ?? "");
+      setAppointments((a.data ?? []) as unknown as Appointment[]);
+      const company = await supabase.from("companies").select("public_booking_slug").eq("id", id).single();
+      if (!company.error) setPublicSlug(company.data?.public_booking_slug ?? "");
       setServices((s.data ?? []) as Service[]);
       setCustomers((c.data ?? []) as Customer[]);
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a agenda."); }
@@ -159,7 +162,10 @@ function AgendaPage() {
     if (mutationError) setError(mutationError.message); else await load();
   };
 
-  const publicLink = publicSlug ? window.location.origin + "/agendar/" + publicSlug : "";\n  const copyPublicLink = async () => { if (publicLink) await navigator.clipboard.writeText(publicLink); };\n\n  const whatsapp = (a: Appointment) => {
+  const publicLink = publicSlug ? window.location.origin + "/agendar/" + publicSlug : "";
+  const copyPublicLink = async () => { if (publicLink) await navigator.clipboard.writeText(publicLink); };
+
+  const whatsapp = (a: Appointment) => {
     const msg = encodeURIComponent(`Olá, ${a.customer_name}! Seu agendamento está marcado para ${new Date(a.appointment_date + "T12:00:00").toLocaleDateString("pt-BR")} às ${a.appointment_time.slice(0,5)} para ${a.service?.name ?? "seu serviço"}.`);
     const number = digits(a.customer_phone);
     window.open(number ? "https://wa.me/55" + number + "?text=" + msg : "https://wa.me/?text=" + msg, "_blank", "noopener,noreferrer");
@@ -195,7 +201,9 @@ function AgendaPage() {
       </CardContent>
     </Card>}
 
-    {publicLink && <Card><CardContent className="p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><p className="font-semibold">Link de agendamento para seus clientes</p><p className="truncate text-sm text-muted-foreground">{publicLink}</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => void copyPublicLink()}><Copy className="mr-2 h-4 w-4" />Copiar</Button><Button variant="outline" asChild><a href={publicLink} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" />Abrir</a></Button></div></div></CardContent></Card>}\n\n    <div className="grid gap-4 sm:grid-cols-4">
+    {publicLink && <Card><CardContent className="p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><p className="font-semibold">Link de agendamento para seus clientes</p><p className="truncate text-sm text-muted-foreground">{publicLink}</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => void copyPublicLink()}><Copy className="mr-2 h-4 w-4" />Copiar</Button><Button variant="outline" asChild><a href={publicLink} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" />Abrir</a></Button></div></div></CardContent></Card>}
+
+    <div className="grid gap-4 sm:grid-cols-4">
       <Metric label="Agendamentos" value={String(appointments.length)} />
       <Metric label="Confirmados" value={String(appointments.filter(a => a.status === "confirmed").length)} />
       <Metric label="Concluídos" value={String(appointments.filter(a => a.status === "completed").length)} />
