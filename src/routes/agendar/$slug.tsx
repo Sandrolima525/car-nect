@@ -81,7 +81,8 @@ function PublicBookingPage() {
     finally { setSaving(false); }
   };
 
-  const whatsappNumber = (company?.whatsapp_number ?? company?.phone ?? "").replace(/\D/g, "");\n  const whatsappMessage = encodeURIComponent(`Olá! Recebi um novo agendamento pela agenda online da ${company?.trade_name ?? company?.name ?? ""}.\\nNome: ${name}\\nWhatsApp: ${phone}\\nServiços: ${selectedServices.map(s => s.name).join(", ")}\\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\\nHorário: ${time}\\nAguardo a confirmação.`);
+  const whatsappNumber = (company?.whatsapp_number ?? company?.phone ?? "").replace(/\D/g, "");
+  const whatsappMessage = encodeURIComponent(`Olá! Recebi um novo agendamento pela agenda online da ${company?.trade_name ?? company?.name ?? ""}.\nNome: ${name}\nWhatsApp: ${phone}\nServiços: ${selectedServices.map(s => s.name).join(", ")}\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\nHorário: ${time}\nAguardo a confirmação.`);
   if (loading) return <div className="flex min-h-screen items-center justify-center p-6 text-muted-foreground">Carregando...</div>;
   if (!company) return <div className="flex min-h-screen items-center justify-center p-6"><Card className="w-full max-w-md"><CardContent className="p-6 text-center text-destructive">{error || "Página não encontrada."}</CardContent></Card></div>;
 
