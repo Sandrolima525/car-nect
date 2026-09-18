@@ -100,9 +100,14 @@ function AuthPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">LavaPro</p>
           <h1 className="mt-2 text-2xl font-semibold text-foreground">Gestão para lava-jatos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "login" ? "Entre com sua conta da empresa" : "Recupere o acesso à sua conta"}
+            {mode === "login"
+              ? "Entre com sua conta da empresa"
+              : mode === "signup"
+                ? "Crie sua conta para começar"
+                : "Recupere o acesso à sua conta"}
           </p>
         </div>
+
 
         <form
           onSubmit={handleSubmit}
