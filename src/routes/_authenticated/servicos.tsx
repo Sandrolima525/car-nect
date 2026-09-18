@@ -20,7 +20,8 @@ function ServicesPage() {
   const [name, setName] = useState("");
   const [duration, setDuration] = useState("60");
   const [price, setPrice] = useState("");
-  const [editing, setEditing] = useState<string | null>(null);\n  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -39,7 +40,8 @@ function ServicesPage() {
 
   useEffect(() => { void load(); }, []);
 
-  const reset = () => { setEditing(null); setName(""); setDuration("60"); setPrice(""); setShowForm(false); };\n  const openNew = () => { setEditing(null); setName(""); setDuration("60"); setPrice(""); setShowForm(true); };
+  const reset = () => { setEditing(null); setName(""); setDuration("60"); setPrice(""); setShowForm(false); };
+  const openNew = () => { setEditing(null); setName(""); setDuration("60"); setPrice(""); setShowForm(true); };
 
   const save = async () => {
     if (!name.trim()) return setError("Informe o nome do serviço.");
