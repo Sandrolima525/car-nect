@@ -24,15 +24,15 @@ export function CompanySetup() {
     setLoading(true);
     setError(null);
 
-    const { error: rpcError } = await supabase.rpc("create_company_for_current_user", {
-      _name: name,
-      _trade_name: tradeName || undefined,
-      _document: document || undefined,
-      _phone: phone || undefined,
-      _email: user?.email ?? undefined,
-      _city: city || undefined,
-      _state: state || undefined,
-    });
+    const args: { _name: string } & Record<string, string> = { _name: name };
+    if (tradeName) args["_trade_name"] = tradeName;
+    if (document) args["_document"] = document;
+    if (phone) args["_phone"] = phone;
+    if (user?.email) args["_email"] = user.email;
+    if (city) args["_city"] = city;
+    if (state) args["_state"] = state;
+
+    const { error: rpcError } = await supabase.rpc("create_company_for_current_user", args);
 
     setLoading(false);
 
