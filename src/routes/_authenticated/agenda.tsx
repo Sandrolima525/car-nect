@@ -37,6 +37,7 @@ function AgendaPage() {
   const [companyId, setCompanyId] = useState("");
   const [servicesError, setServicesError] = useState("");
   const [date, setDate] = useState(today());
+  const [statusFilter, setStatusFilter] = useState("all");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -198,8 +199,19 @@ function AgendaPage() {
   };
 
   const updateStatus = async (id: string, status: string) => {
+    const appointment = appointments.find((item) => item.id === id);
     const { error: mutationError } = await supabase.from("appointments").update({ status }).eq("id", id).eq("company_id", companyId);
-    if (mutationError) setError(mutationError.message); else await load();
+    if (mutationError) { setError(mutationError.message); return; }
+    if (status === "confirmed" && appointment) {
+      const number = digits(appointment.customer_phone);
+      const message = encodeURIComponent(`Olá, ${appointment.customer_name}! 🚗✨ Seu agendamento foi confirmado para ${new Date(appointment.appointment_date + "T12:00:00").toLocaleDateString("pt-BR")} às ${appointment.appointment_time.slice(0, 5)}. Serviço: ${appointment.services?.map((s) => s.name).join(" + ") || appointment.service?.name || "serviço"}. Obrigado por escolher a LavaPro!`);
+      if (number) {
+        window.open("https://wa.me/55" + number + "?text=" + message, "_blank", "noopener,noreferrer");
+      } else {
+        setError("Agendamento confirmado, mas o cliente não possui WhatsApp cadastrado.");
+      }
+    }
+    await load();
   };
 
   const remove = async (id: string) => {
@@ -220,7 +232,12 @@ function AgendaPage() {
   return <div className="space-y-6">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div><p className="text-sm font-medium text-primary">Agenda</p><h2 className="text-2xl font-bold">Agendamentos</h2><p className="text-sm text-muted-foreground">A agenda sempre fica em ordem e respeita a duração de cada serviço.</p></div>
-      <div className="flex gap-2"><Input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-auto" /><Button onClick={openNew}><Plus className="mr-2 h-4 w-4" />Novo</Button></div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setDate(today())}>Hoje</Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 1); setDate(d.toLocaleDateString("en-CA")); }}>Amanhã</Button>
+        <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-auto" />
+        <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="pending">Pendentes</SelectItem><SelectItem value="confirmed">Confirmados</SelectItem><SelectItem value="completed">Concluídos</SelectItem><SelectItem value="cancelled">Cancelados</SelectItem></SelectContent></Select>
+        <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" />Novo</Button></div>
     </div>
     {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
@@ -256,9 +273,9 @@ function AgendaPage() {
       <Metric label="Valor agendado" value={money(appointments.filter(a => a.status !== "cancelled").reduce((s,a) => s + a.totalPrice, 0))} />
     </div>
 
-    <Card><CardHeader><h3 className="font-semibold">Agenda de {new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}</h3></CardHeader><CardContent className="p-0">
-      {loading ? <div className="p-6 text-sm text-muted-foreground">Carregando...</div> : appointments.length === 0 ? <div className="p-6 text-sm text-muted-foreground">Nenhum agendamento neste dia.</div> :
-      <div className="divide-y">{appointments.map(a => <div key={a.id} className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
+    <Card><CardHeader><h3 className="font-semibold">Agenda de {new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}</h3><p className="text-sm text-muted-foreground">{statusFilter === "all" ? "Todos os agendamentos" : statusFilter === "confirmed" ? "Somente confirmados" : statusFilter === "pending" ? "Somente pendentes" : statusFilter === "completed" ? "Somente concluídos" : "Somente cancelados"}</p></CardHeader><CardContent className="p-0">
+      {loading ? <div className="p-6 text-sm text-muted-foreground">Carregando...</div> : appointments.filter((a) => statusFilter === "all" || a.status === statusFilter).length === 0 ? <div className="p-6 text-sm text-muted-foreground">Nenhum agendamento neste dia.</div> :
+      <div className="divide-y">{appointments.filter((a) => statusFilter === "all" || a.status === statusFilter).map(a => <div key={a.id} className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 gap-3"><div className="min-w-16 rounded-lg bg-primary/10 px-2 py-2 text-center font-bold text-primary">{a.appointment_time.slice(0,5)}</div><div className="min-w-0"><p className="font-semibold">{a.customer_name}</p><p className="text-sm text-muted-foreground"><UserRound className="mr-1 inline h-3.5 w-3.5" />{a.customer_phone}</p><p className="text-sm text-muted-foreground"><Car className="mr-1 inline h-3.5 w-3.5" />{a.vehicle ? [a.vehicle.plate,a.vehicle.brand,a.vehicle.model].filter(Boolean).join(" · ") : a.vehicle_plate || "Veículo não informado"}</p><p className="mt-1 text-xs text-muted-foreground"><Clock3 className="mr-1 inline h-3.5 w-3.5" />{a.services?.length ? a.services.map(s => s.name).join(" + ") : (a.service?.name ?? "Serviço")} · {a.totalDuration} min · {money(a.totalPrice)}</p></div></div>
         <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-muted px-3 py-1 text-xs">{a.status === "pending" ? "Pendente" : a.status === "confirmed" ? "Confirmado" : a.status === "completed" ? "Concluído" : "Cancelado"}</span>{a.status !== "cancelled" && a.status !== "completed" && <Button variant="outline" size="sm" onClick={() => void updateStatus(a.id, a.status === "pending" ? "confirmed" : "completed")}>{a.status === "pending" ? <><Check className="mr-2 h-4 w-4" />Confirmar</> : <><Check className="mr-2 h-4 w-4" />Concluir</>}</Button>}{a.status !== "cancelled" && <Button variant="outline" size="sm" onClick={() => whatsapp(a)}><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</Button>}{a.status !== "cancelled" && a.status !== "completed" && <Button variant="ghost" size="icon" onClick={() => void updateStatus(a.id, "cancelled")}><X className="h-4 w-4" /></Button>}<Button variant="ghost" size="icon" onClick={() => void remove(a.id)}><Trash2 className="h-4 w-4" /></Button></div>
       </div>)}</div>}
