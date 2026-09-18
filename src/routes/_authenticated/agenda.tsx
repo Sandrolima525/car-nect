@@ -81,6 +81,12 @@ function AgendaPage() {
         vehicleRows = (v.data ?? []) as Vehicle[];
       }
       const serviceMap = new Map(serviceRows.map(svc => [svc.id, svc]));
+      const appointmentIds = appointmentRows.map((row: any) => row.id);
+      const appointmentServiceMap = new Map<string, any[]>();
+      if (appointmentIds.length) {
+        const ars = await (supabase as any).from("appointment_services").select("appointment_id,service_id,price,duration_minutes").in("appointment_id", appointmentIds);
+        if (!ars.error) for (const item of ars.data ?? []) appointmentServiceMap.set(item.appointment_id, [...(appointmentServiceMap.get(item.appointment_id) ?? []), item]);
+      }
       const vehicleMap = new Map(vehicleRows.map(v => [v.id, v]));
       setAppointments(appointmentRows.map((row: any) => ({
         ...row,
@@ -238,7 +244,7 @@ function AgendaPage() {
     <Card><CardHeader><h3 className="font-semibold">Agenda de {new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}</h3></CardHeader><CardContent className="p-0">
       {loading ? <div className="p-6 text-sm text-muted-foreground">Carregando...</div> : appointments.length === 0 ? <div className="p-6 text-sm text-muted-foreground">Nenhum agendamento neste dia.</div> :
       <div className="divide-y">{appointments.map(a => <div key={a.id} className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 gap-3"><div className="min-w-16 rounded-lg bg-primary/10 px-2 py-2 text-center font-bold text-primary">{a.appointment_time.slice(0,5)}</div><div className="min-w-0"><p className="font-semibold">{a.customer_name}</p><p className="text-sm text-muted-foreground"><UserRound className="mr-1 inline h-3.5 w-3.5" />{a.customer_phone}</p><p className="text-sm text-muted-foreground"><Car className="mr-1 inline h-3.5 w-3.5" />{a.vehicle ? [a.vehicle.plate,a.vehicle.brand,a.vehicle.model].filter(Boolean).join(" · ") : a.vehicle_plate || "Veículo não informado"}</p><p className="mt-1 text-xs text-muted-foreground"><Clock3 className="mr-1 inline h-3.5 w-3.5" />{a.service?.name ?? "Serviço"} · {a.service?.estimated_duration ?? 60} min · {money(Number(a.service?.price ?? 0))}</p></div></div>
+        <div className="flex min-w-0 gap-3"><div className="min-w-16 rounded-lg bg-primary/10 px-2 py-2 text-center font-bold text-primary">{a.appointment_time.slice(0,5)}</div><div className="min-w-0"><p className="font-semibold">{a.customer_name}</p><p className="text-sm text-muted-foreground"><UserRound className="mr-1 inline h-3.5 w-3.5" />{a.customer_phone}</p><p className="text-sm text-muted-foreground"><Car className="mr-1 inline h-3.5 w-3.5" />{a.vehicle ? [a.vehicle.plate,a.vehicle.brand,a.vehicle.model].filter(Boolean).join(" · ") : a.vehicle_plate || "Veículo não informado"}</p><p className="mt-1 text-xs text-muted-foreground"><Clock3 className="mr-1 inline h-3.5 w-3.5" />{a.services?.length ? a.services.map(s => s.name).join(" + ") : (a.service?.name ?? "Serviço")} · {a.totalDuration} min · {money(a.totalPrice)}</p></div></div>
         <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-muted px-3 py-1 text-xs">{a.status === "pending" ? "Pendente" : a.status === "confirmed" ? "Confirmado" : a.status === "completed" ? "Concluído" : "Cancelado"}</span>{a.status !== "cancelled" && a.status !== "completed" && <Button variant="outline" size="sm" onClick={() => void updateStatus(a.id, a.status === "pending" ? "confirmed" : "completed")}>{a.status === "pending" ? <><Check className="mr-2 h-4 w-4" />Confirmar</> : <><Check className="mr-2 h-4 w-4" />Concluir</>}</Button>}{a.status !== "cancelled" && <Button variant="outline" size="sm" onClick={() => whatsapp(a)}><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</Button>}{a.status !== "cancelled" && a.status !== "completed" && <Button variant="ghost" size="icon" onClick={() => void updateStatus(a.id, "cancelled")}><X className="h-4 w-4" /></Button>}<Button variant="ghost" size="icon" onClick={() => void remove(a.id)}><Trash2 className="h-4 w-4" /></Button></div>
       </div>)}</div>}
     </CardContent></Card>
