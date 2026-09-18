@@ -504,6 +504,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_company_for_current_user: {
+        Args: {
+          _city?: string
+          _document?: string
+          _email?: string
+          _name: string
+          _phone?: string
+          _state?: string
+          _trade_name?: string
+        }
+        Returns: string
+      }
       current_company_id: { Args: never; Returns: string }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }

@@ -27,7 +27,8 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "recover">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "recover">("login");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,6 +57,33 @@ function AuthPage() {
       return;
     }
 
+    if (mode === "signup") {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+          data: { full_name: fullName },
+        },
+      });
+      setLoading(false);
+      if (signUpError) {
+        setError(
+          signUpError.message.includes("already registered")
+            ? "Já existe uma conta com este e-mail."
+            : signUpError.message,
+        );
+        return;
+      }
+      if (data.session) {
+        navigate({ to: "/dashboard", replace: true });
+        return;
+      }
+      setMode("login");
+      setMessage("Conta criada. Confirme o e-mail enviado e depois faça login.");
+      return;
+    }
+
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (signInError) {
@@ -72,14 +100,32 @@ function AuthPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">LavaPro</p>
           <h1 className="mt-2 text-2xl font-semibold text-foreground">Gestão para lava-jatos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "login" ? "Entre com sua conta da empresa" : "Recupere o acesso à sua conta"}
+            {mode === "login"
+              ? "Entre com sua conta da empresa"
+              : mode === "signup"
+                ? "Crie sua conta para começar"
+                : "Recupere o acesso à sua conta"}
           </p>
         </div>
+
 
         <form
           onSubmit={handleSubmit}
           className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm"
         >
+          {mode === "signup" && (
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Seu nome</Label>
+              <Input
+                id="fullName"
+                autoComplete="name"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
             <Input
@@ -92,14 +138,15 @@ function AuthPage() {
             />
           </div>
 
-          {mode === "login" && (
+          {mode !== "recover" && (
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
                 required
+                minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -110,24 +157,45 @@ function AuthPage() {
           {message && <p className="text-sm text-primary">{message}</p>}
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Enviar link"}
+            {loading
+              ? "Aguarde..."
+              : mode === "login"
+                ? "Entrar"
+                : mode === "signup"
+                  ? "Criar conta"
+                  : "Enviar link"}
           </Button>
 
-          <button
-            type="button"
-            className="w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
-            onClick={() => {
-              setMode(mode === "login" ? "recover" : "login");
-              setError(null);
-              setMessage(null);
-            }}
-          >
-            {mode === "login" ? "Esqueci minha senha" : "Voltar para o login"}
-          </button>
+          <div className="space-y-1">
+            <button
+              type="button"
+              className="w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
+              onClick={() => {
+                setMode(mode === "login" ? "signup" : "login");
+                setError(null);
+                setMessage(null);
+              }}
+            >
+              {mode === "login" ? "Criar uma conta nova" : "Já tenho conta, entrar"}
+            </button>
+            {mode !== "recover" && (
+              <button
+                type="button"
+                className="w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
+                onClick={() => {
+                  setMode("recover");
+                  setError(null);
+                  setMessage(null);
+                }}
+              >
+                Esqueci minha senha
+              </button>
+            )}
+          </div>
         </form>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Acesso somente para usuários cadastrados pela administração.
+          Ao criar a conta você poderá cadastrar sua empresa no primeiro acesso.
         </p>
       </div>
     </div>

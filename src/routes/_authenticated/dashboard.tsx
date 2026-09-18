@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { CompanySetup } from "@/components/onboarding/company-setup";
 import { useAuth } from "@/hooks/use-auth";
 import { ROLE_LABELS } from "@/types/database";
 
@@ -32,6 +33,11 @@ function DashboardPage() {
   if (loading) {
     return <p className="text-sm text-muted-foreground">Carregando dados da conta...</p>;
   }
+
+  if (profile && !company) {
+    return <CompanySetup />;
+  }
+
 
   return (
     <div className="space-y-8">
