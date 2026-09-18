@@ -14,7 +14,7 @@ export const Route = createFileRoute("/agendar/$slug")({
   component: PublicBookingPage,
 });
 
-type Company = { id: string; name: string; trade_name: string | null; phone: string | null };
+type Company = { id: string; name: string; trade_name: string | null; phone: string | null; whatsapp_number: string | null; logo_url: string | null };
 type Service = { id: string; name: string; price: number; estimated_duration: number | null };
 
 function PublicBookingPage() {
@@ -45,7 +45,7 @@ function PublicBookingPage() {
     void (async () => {
       try {
         setLoading(true);
-        const c = await supabase.from("companies").select("id,name,trade_name,phone").eq("public_booking_slug", slug).eq("public_booking_enabled", true).maybeSingle();
+        const c = await supabase.from("companies").select("id,name,trade_name,phone,whatsapp_number,logo_url").eq("public_booking_slug", slug).eq("public_booking_enabled", true).maybeSingle();
         if (c.error) throw c.error;
         if (!c.data) throw new Error("Página de agendamento não encontrada.");
         const s = await supabase.from("services").select("id,name,price,estimated_duration").eq("company_id", c.data.id).eq("active", true).order("name");
@@ -81,14 +81,14 @@ function PublicBookingPage() {
     finally { setSaving(false); }
   };
 
-  const whatsappMessage = encodeURIComponent(`Olá! Solicitei um agendamento na ${company?.trade_name ?? company?.name ?? ""}.\nNome: ${name}\nWhatsApp: ${phone}\nServiços: ${selectedServices.map(s => s.name).join(", ")}\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\nHorário: ${time}\nAguardo a confirmação.`);
+  const whatsappNumber = (company?.whatsapp_number ?? company?.phone ?? "").replace(/\D/g, "");\n  const whatsappMessage = encodeURIComponent(`Olá! Recebi um novo agendamento pela agenda online da ${company?.trade_name ?? company?.name ?? ""}.\\nNome: ${name}\\nWhatsApp: ${phone}\\nServiços: ${selectedServices.map(s => s.name).join(", ")}\\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\\nHorário: ${time}\\nAguardo a confirmação.`);
   if (loading) return <div className="flex min-h-screen items-center justify-center p-6 text-muted-foreground">Carregando...</div>;
   if (!company) return <div className="flex min-h-screen items-center justify-center p-6"><Card className="w-full max-w-md"><CardContent className="p-6 text-center text-destructive">{error || "Página não encontrada."}</CardContent></Card></div>;
 
   return <main className="min-h-screen bg-muted/30 px-4 py-8">
     <div className="mx-auto max-w-xl">
-      <div className="mb-6 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-bold">LP</div><h1 className="text-2xl font-bold">{company.trade_name ?? company.name}</h1><p className="mt-1 text-sm text-muted-foreground">Escolha o serviço e veja somente os horários realmente disponíveis.</p></div>
-      {done ? <Card><CardContent className="p-8 text-center"><CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-600" /><h2 className="text-xl font-bold">Agendamento solicitado!</h2><p className="mt-2 text-sm text-muted-foreground">O horário foi reservado e já entrou na agenda da empresa.</p><Button className="mt-6 w-full" asChild><a href={"https://wa.me/?text=" + whatsappMessage} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />Enviar no WhatsApp</a></Button></CardContent></Card> :
+      <div className="mb-6 text-center">{company.logo_url ? <img src={company.logo_url} alt={"Logo " + (company.trade_name ?? company.name)} className="mx-auto mb-3 h-16 max-w-40 object-contain" /> : <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-bold">LP</div>}<h1 className="text-2xl font-bold">{company.trade_name ?? company.name}</h1><p className="mt-1 text-sm text-muted-foreground">Escolha o serviço e veja somente os horários realmente disponíveis.</p></div>
+      {done ? <Card><CardContent className="p-8 text-center"><CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-600" /><h2 className="text-xl font-bold">Agendamento solicitado!</h2><p className="mt-2 text-sm text-muted-foreground">O horário foi reservado e já entrou na agenda da empresa.</p><Button className="mt-6 w-full" asChild disabled={!whatsappNumber}><a href={(whatsappNumber ? "https://wa.me/55" + whatsappNumber + "?text=" : "https://wa.me/?text=") + whatsappMessage} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />${whatsappNumber ? "Enviar confirmação no WhatsApp" : "WhatsApp não configurado"}</a></Button></CardContent></Card> :
       <Card><CardHeader><h2 className="font-semibold">Agendar atendimento</h2></CardHeader><CardContent className="space-y-5">
         {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
         <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" /></div><div className="space-y-2"><Label>WhatsApp *</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(48) 99999-9999" /></div></div>
