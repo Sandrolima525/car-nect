@@ -112,8 +112,8 @@ function AgendaPage() {
         };
       }) as Appointment[]);
 
-      const company = await (supabase as any).from("companies").select("public_booking_slug").eq("id", id).single();
-      if (!company.error) setPublicSlug(company.data?.public_booking_slug ?? "");
+      const company = await (supabase as any).from("companies").select("name,public_booking_slug").eq("id", id).single();
+      if (!company.error) { setPublicSlug(company.data?.public_booking_slug ?? ""); setCompanyName(company.data?.name ?? "Empresa"); }
       setServices(serviceRows);
       setCustomers((c.data ?? []) as Customer[]);
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a agenda."); }
@@ -206,7 +206,7 @@ function AgendaPage() {
     if (mutationError) { setError(mutationError.message); return; }
     if (status === "confirmed" && appointment) {
       const number = digits(appointment.customer_phone);
-      const message = encodeURIComponent(`Olá, ${appointment.customer_name}! 🚗✨ Seu agendamento foi confirmado para ${new Date(appointment.appointment_date + "T12:00:00").toLocaleDateString("pt-BR")} às ${appointment.appointment_time.slice(0, 5)}. Serviço: ${appointment.services?.map((s) => s.name).join(" + ") || appointment.service?.name || "serviço"}. Obrigado por escolher a LavaPro!`);
+      const message = encodeURIComponent(`Olá, ${appointment.customer_name}! 🚗✨ Seu agendamento foi confirmado para ${new Date(appointment.appointment_date + "T12:00:00").toLocaleDateString("pt-BR")} às ${appointment.appointment_time.slice(0, 5)}. Serviço: ${appointment.services?.map((s) => s.name).join(" + ") || appointment.service?.name || "serviço"}. Obrigado por escolher a ${companyName}!`);
       if (number) {
         window.open("https://wa.me/55" + number + "?text=" + message, "_blank", "noopener,noreferrer");
       } else {
@@ -226,7 +226,7 @@ function AgendaPage() {
   const copyPublicLink = async () => { if (publicLink) await navigator.clipboard.writeText(publicLink); };
 
   const whatsapp = (a: Appointment) => {
-    const msg = encodeURIComponent(`Olá, ${a.customer_name}! Seu agendamento está marcado para ${new Date(a.appointment_date + "T12:00:00").toLocaleDateString("pt-BR")} às ${a.appointment_time.slice(0,5)} para ${a.service?.name ?? "seu serviço"}.`);
+    const msg = encodeURIComponent(`Olá, ${a.customer_name}! Seu agendamento está marcado para ${new Date(a.appointment_date + "T12:00:00").toLocaleDateString("pt-BR")} às ${a.appointment_time.slice(0,5)} para ${a.services?.map(s => s.name).join(" + ") || a.service?.name || "seu serviço"}.`);
     const number = digits(a.customer_phone);
     window.open(number ? "https://wa.me/55" + number + "?text=" + msg : "https://wa.me/?text=" + msg, "_blank", "noopener,noreferrer");
   };
