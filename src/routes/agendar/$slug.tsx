@@ -27,7 +27,7 @@ function PublicBookingPage() {
   const [plate, setPlate] = useState("");
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
-  const [date, setDate] = useState(new Date(Date.now() + 86400000).toISOString().slice(0,10));
+  const [date, setDate] = useState(new Date(Date.now() + 86400000).toLocaleDateString("en-CA"));
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
@@ -81,7 +81,7 @@ function PublicBookingPage() {
     finally { setSaving(false); }
   };
 
-  const whatsappNumber = (company?.whatsapp_number ?? company?.phone ?? "").replace(/\D/g, "");
+  const rawWhatsapp = (company?.whatsapp_number ?? company?.phone ?? "").replace(/\D/g, "");\n  const whatsappNumber = rawWhatsapp.startsWith("55") ? rawWhatsapp : rawWhatsapp ? "55" + rawWhatsapp : "";
   const whatsappMessage = encodeURIComponent(`Olá! Recebi um novo agendamento pela agenda online da ${company?.trade_name ?? company?.name ?? ""}.\nNome: ${name}\nWhatsApp: ${phone}\nServiços: ${selectedServices.map(s => s.name).join(", ")}\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\nHorário: ${time}\nAguardo a confirmação.`);
   if (loading) return <div className="flex min-h-screen items-center justify-center p-6 text-muted-foreground">Carregando...</div>;
   if (!company) return <div className="flex min-h-screen items-center justify-center p-6"><Card className="w-full max-w-md"><CardContent className="p-6 text-center text-destructive">{error || "Página não encontrada."}</CardContent></Card></div>;
@@ -89,7 +89,7 @@ function PublicBookingPage() {
   return <main className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-primary/[0.06] px-4 py-8 sm:py-12">
     <div className="mx-auto max-w-2xl">
       <div className="mb-8 text-center">{company.logo_url ? <img src={company.logo_url} alt={"Logo " + (company.trade_name ?? company.name)} className="mx-auto mb-3 h-16 max-w-40 object-contain" /> : <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-bold">LP</div>}<h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{company.trade_name ?? company.name}</h1><p className="mt-1 text-sm text-muted-foreground">Escolha o serviço e veja somente os horários realmente disponíveis.</p></div>
-      {done ? <Card className="overflow-hidden border-border/60 shadow-xl shadow-black/[0.06]"><CardContent className="p-8 text-center sm:p-10"><CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-600" /><h2 className="text-xl font-bold">Agendamento solicitado!</h2><p className="mt-2 text-sm text-muted-foreground">O horário foi reservado e já entrou na agenda da empresa.</p><Button className="mt-6 w-full" asChild disabled={!whatsappNumber}><a href={(whatsappNumber ? "https://wa.me/55" + whatsappNumber + "?text=" : "https://wa.me/?text=") + whatsappMessage} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />{whatsappNumber ? "Enviar confirmação no WhatsApp" : "WhatsApp não configurado"}</a></Button></CardContent></Card> :
+      {done ? <Card className="overflow-hidden border-border/60 shadow-xl shadow-black/[0.06]"><CardContent className="p-8 text-center sm:p-10"><CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-600" /><h2 className="text-xl font-bold">Agendamento solicitado!</h2><p className="mt-2 text-sm text-muted-foreground">O horário foi reservado e já entrou na agenda da empresa.</p><Button className="mt-6 w-full" asChild disabled={!whatsappNumber}><a href={(whatsappNumber ? "https://wa.me/" + whatsappNumber + "?text=" : "https://wa.me/?text=") + whatsappMessage} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />{whatsappNumber ? "Enviar confirmação no WhatsApp" : "WhatsApp não configurado"}</a></Button></CardContent></Card> :
       <Card className="overflow-hidden border-border/60 shadow-xl shadow-black/[0.06]"><CardHeader className="border-b border-border/50 bg-muted/20 p-6"><h2 className="text-lg font-semibold">Agendar atendimento</h2><p className="text-sm text-muted-foreground">Preencha seus dados e escolha os serviços.</p></CardHeader><CardContent className="space-y-5">
         {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
         <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" /></div><div className="space-y-2"><Label>WhatsApp *</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(48) 99999-9999" /></div></div>
@@ -99,7 +99,7 @@ function PublicBookingPage() {
         <div className="rounded-xl border p-4"><p className="mb-3 font-medium">Veículo</p><div className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label>Placa</Label><Input value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="ABC1D23" /></div><div className="space-y-2"><Label>Marca</Label><Input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Honda" /></div><div className="space-y-2"><Label>Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Civic" /></div></div></div>
         <div className="space-y-2"><Label>Observações</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opcional" /></div>
         <Button className="w-full rounded-xl shadow-lg shadow-primary/20" size="lg" onClick={() => void submit()} disabled={saving || !time}>{saving ? "Enviando..." : "Solicitar horário"}</Button>
-        <p className="text-center text-xs text-muted-foreground">Funcionamento considerado pelo sistema: 08:00 às 18:00. Os horários são recalculados conforme a duração de cada serviço.</p>
+        <p className="text-center text-xs text-muted-foreground">Os horários exibidos seguem o funcionamento configurado pela empresa e são recalculados conforme a duração de cada serviço.</p>
       </CardContent></Card>}
     </div>
   </main>;
