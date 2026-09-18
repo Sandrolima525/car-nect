@@ -30,7 +30,7 @@ type Appointment = {
   totalDuration: number;
 };
 
-const MAX_CAPACITY = 6;
+
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const today = () => new Date().toLocaleDateString("en-CA");
@@ -64,6 +64,7 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [companyName, setCompanyName] = useState("LavaPro");
+  const [maxCapacity, setMaxCapacity] = useState(2);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const enrich = async (rows: any[]) => {
@@ -111,8 +112,8 @@ function DashboardPage() {
       setError("");
 
       const companyId = await getCurrentCompanyId();
-      const company = await supabase.from("companies").select("name").eq("id", companyId).maybeSingle();
-      if (!company.error && company.data?.name) setCompanyName(company.data.name);
+      const company = await supabase.from("companies").select("name,simultaneous_capacity").eq("id", companyId).maybeSingle();
+      if (!company.error) { if (company.data?.name) setCompanyName(company.data.name); setMaxCapacity(Math.max(1, Number(company.data?.simultaneous_capacity ?? 2))); }
 
       const { data, error: appointmentsError } = await supabase
         .from("appointments")
@@ -144,7 +145,7 @@ function DashboardPage() {
   const ready = appointments.filter((a) => a.status === "completed");
   const patio = [...queue, ...washing, ...ready];
 
-  const capacity = Math.min(100, Math.round((patio.length / MAX_CAPACITY) * 100));
+  const capacity = Math.min(100, Math.round((patio.length / maxCapacity) * 100));
 
   const averageService = useMemo(() => {
     if (!appointments.length) return 0;
@@ -239,7 +240,7 @@ function DashboardPage() {
             <p className="text-sm text-muted-foreground">Visão operacional dos veículos do dia</p>
           </div>
           <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
-            {patio.length}/{MAX_CAPACITY} veículos
+            {patio.length}/{maxCapacity} veículos
           </span>
         </div>
 
@@ -264,7 +265,7 @@ function DashboardPage() {
           <CardContent>
             <div className="flex items-end justify-between">
               <span className="text-4xl font-black tracking-tight">{loading ? "—" : capacity}%</span>
-              <span className="text-sm text-muted-foreground">{patio.length} de {MAX_CAPACITY} vagas operacionais</span>
+              <span className="text-sm text-muted-foreground">{patio.length} de {maxCapacity} vagas operacionais</span>
             </div>
             <div className="mt-4 h-3 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: capacity + "%" }} />
