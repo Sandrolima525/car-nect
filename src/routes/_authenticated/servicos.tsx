@@ -13,6 +13,7 @@ export const Route = createFileRoute("/_authenticated/servicos")({ component: Se
 type Service = { id: string; name: string; price: number; estimated_duration: number | null; active: boolean };
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const parseMoney = (value: string) => Number(value.trim().replace(/\./g, "").replace(",", "."));
 
 function ServicesPage() {
   const [companyId, setCompanyId] = useState("");
@@ -45,11 +46,12 @@ function ServicesPage() {
 
   const save = async () => {
     if (!name.trim()) return setError("Informe o nome do serviço.");
-    if (!Number(price) || Number(price) < 0) return setError("Informe um valor válido.");
+    const numericPrice = parseMoney(price);
+    if (!Number.isFinite(numericPrice) || numericPrice < 0) return setError("Informe um valor válido, por exemplo: 35 ou 35,00.");
     if (!Number(duration) || Number(duration) < 5) return setError("Informe uma duração de pelo menos 5 minutos.");
     try {
       setSaving(true); setError("");
-      const payload = { name: name.trim(), price: Number(price), estimated_duration: Number(duration), active: true };
+      const payload = { name: name.trim(), price: numericPrice, estimated_duration: Number(duration), active: true };
       const result = editing
         ? await supabase.from("services").update(payload).eq("id", editing).eq("company_id", companyId)
         : await supabase.from("services").insert({ ...payload, company_id: companyId });
@@ -70,7 +72,7 @@ function ServicesPage() {
   return <div className="space-y-6">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-2xl font-bold">Serviços</h2><p className="text-sm text-muted-foreground">Cadastre somente o que o sistema precisa para montar a agenda.</p></div><Button onClick={openNew}><Plus className="mr-2 h-4 w-4" />Novo serviço</Button></div>
     {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-    {showForm && <Card><CardHeader><h3 className="font-semibold">{editing ? "Editar serviço" : "Novo serviço"}</h3></CardHeader><CardContent className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label>Serviço *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Lavagem completa" /></div><div className="space-y-2"><Label>Duração (minutos) *</Label><Input type="number" min="5" step="5" value={duration} onChange={e => setDuration(e.target.value)} /></div><div className="space-y-2"><Label>Valor *</Label><Input type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="0,00" /></div><div className="flex gap-2 sm:col-span-3"><Button onClick={() => void save()} disabled={saving}>{saving ? "Salvando..." : "Salvar serviço"}</Button><Button variant="outline" onClick={reset}>Cancelar</Button></div></CardContent></Card>}
+    {showForm && <Card><CardHeader><h3 className="font-semibold">{editing ? "Editar serviço" : "Novo serviço"}</h3></CardHeader><CardContent className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label>Serviço *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Lavagem completa" /></div><div className="space-y-2"><Label>Duração (minutos) *</Label><Input type="number" min="5" step="5" value={duration} onChange={e => setDuration(e.target.value)} /></div><div className="space-y-2"><Label>Valor *</Label><Input inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} placeholder="35,00" /></div><div className="flex gap-2 sm:col-span-3"><Button onClick={() => void save()} disabled={saving}>{saving ? "Salvando..." : "Salvar serviço"}</Button><Button variant="outline" onClick={reset}>Cancelar</Button></div></CardContent></Card>}
     <Card><CardContent className="p-0">{loading ? <div className="p-6 text-sm text-muted-foreground">Carregando...</div> : services.length === 0 ? <div className="p-6 text-sm text-muted-foreground">Nenhum serviço cadastrado.</div> : <div className="divide-y">{services.map(s => <div key={s.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">{s.name}</p><p className="text-sm text-muted-foreground">{s.estimated_duration ?? 60} minutos</p></div><div className="flex items-center gap-3"><span className="font-bold">{money(Number(s.price))}</span><Button variant="ghost" size="icon" onClick={() => edit(s)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => void remove(s.id)}><Trash2 className="h-4 w-4" /></Button></div></div>)}</div>}</CardContent></Card>
   </div>;
 }
