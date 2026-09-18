@@ -48,6 +48,7 @@ function statusLabel(status: string) {
   if (status === "pending") return "Na fila";
   if (status === "confirmed") return "Em lavagem";
   if (status === "completed") return "Pronto";
+  if (status === "delivered") return "Concluído";
   return "Cancelado";
 }
 
