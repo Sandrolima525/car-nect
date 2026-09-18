@@ -83,12 +83,12 @@ function ConfiguracoesPage() {
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>;
 
-  return <div className="mx-auto max-w-3xl space-y-6">
-    <div><h2 className="text-2xl font-bold">Configurações</h2><p className="text-sm text-muted-foreground">Configurações da empresa e do agendamento público.</p></div>
+  return <div className="mx-auto max-w-4xl space-y-7">
+    <div><div className="mb-2 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Administração</div><h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Configurações</h2><p className="text-sm text-muted-foreground">Configurações da empresa e do agendamento público.</p></div>
     {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
     {message && <div className="rounded-lg bg-green-500/10 p-3 text-sm text-green-700">{message}</div>}
-    <Card>
-      <CardHeader><h3 className="font-semibold">Identidade da empresa</h3></CardHeader>
+    <Card className="overflow-hidden border-border/60 shadow-sm">
+      <CardHeader className="border-b border-border/50 bg-muted/20"><h3 className="font-semibold">Identidade da empresa</h3><p className="text-sm text-muted-foreground">Personalize como o LavaPro aparece para seus clientes.</p></CardHeader>
       <CardContent className="space-y-5">
         <div className="space-y-2"><Label>Logo</Label><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border bg-muted">{logoUrl ? <img src={logoUrl} alt="Logo da empresa" className="h-full w-full object-contain" /> : <ImagePlus className="h-8 w-8 text-muted-foreground" />}</div><div><Input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => { const file = e.target.files?.[0]; if (file) void uploadLogo(file); }} disabled={uploading} /><p className="mt-2 text-xs text-muted-foreground">PNG, JPG, WEBP ou SVG · máximo 2 MB.</p></div></div></div>
         <div className="space-y-2"><Label>WhatsApp para receber agendamentos *</Label><Input value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="(48) 99999-9999" /><p className="text-xs text-muted-foreground">Quando um cliente finalizar um agendamento público, o botão de confirmação abrirá o WhatsApp deste número.</p></div>
