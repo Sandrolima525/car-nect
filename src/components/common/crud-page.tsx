@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export function CrudPage({ table, title, description, singular, fields, columns,
       setLoading(true);
       const id = companyId ?? (await getCurrentCompanyId());
       setCompanyId(id);
-      const { data, error: queryError } = await supabase.from(table).select("*").eq("company_id", id).order("created_at", { ascending: false });
+      const { data, error: queryError } = await (supabase as any).from(table).select("*").eq("company_id", id).order("created_at", { ascending: false });
       if (queryError) throw queryError;
       setRecords((data ?? []) as Record<string, unknown>[]);
     } catch (err) {
@@ -84,8 +84,8 @@ export function CrudPage({ table, title, description, singular, fields, columns,
         if (field.type === "number") payload[field.key] = form[field.key] ? Number(form[field.key]) : null;
       });
       const query = editing
-        ? supabase.from(table).update(payload).eq("id", editing.id)
-        : supabase.from(table).insert(payload);
+        ? (supabase as any).from(table).update(payload).eq("id", editing["id"]).eq("company_id", companyId)
+        : (supabase as any).from(table).insert(payload);
       const { error: mutationError } = await query;
       if (mutationError) throw mutationError;
       setEditing(null);
@@ -99,7 +99,7 @@ export function CrudPage({ table, title, description, singular, fields, columns,
 
   const remove = async (id: unknown) => {
     if (!window.confirm("Deseja realmente excluir este registro?")) return;
-    const { error: mutationError } = await supabase.from(table).delete().eq("id", id);
+    const { error: mutationError } = await (supabase as any).from(table).delete().eq("id", id).eq("company_id", companyId);
     if (mutationError) setError(mutationError.message);
     else await load();
   };
