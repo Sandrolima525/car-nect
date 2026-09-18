@@ -102,12 +102,12 @@ function DashboardPage() {
   const customers = new Set(appointments.map((a) => a.customer_name.trim().toLowerCase())).size;
   const revenue = appointments.filter((a) => a.status === "completed").reduce((sum, a) => sum + Number(a.service?.price ?? 0), 0);
   const weekAppointments = periodAppointments.filter((a) => a.appointment_date >= period.weekStart && a.appointment_date <= period.weekEnd);
-  const monthAppointments = periodAppointments;
+  const monthAppointments = periodAppointments.filter((a) => a.appointment_date >= period.monthStart && a.appointment_date <= period.monthEnd);
   const weekRevenue = weekAppointments.filter((a) => a.status === "completed").reduce((sum, a) => sum + Number(a.service?.price ?? 0), 0);
   const monthRevenue = monthAppointments.filter((a) => a.status === "completed").reduce((sum, a) => sum + Number(a.service?.price ?? 0), 0);
 
   const shareReadyOnWhatsApp = (a: Appointment) => {
-    const phone = (a.customer_phone ?? "").replace(/\\D/g, "");
+    const phone = (a.customer_phone ?? "").replace(/\D/g, "");
     if (!phone) {
       setError("Este cliente não possui um WhatsApp cadastrado.");
       return;
