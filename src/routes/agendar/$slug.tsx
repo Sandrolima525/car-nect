@@ -9,7 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/agendar/$slug")({\n  ssr: false,\n  component: PublicBookingPage,\n});
+export const Route = createFileRoute("/agendar/$slug")({
+  ssr: false,
+  component: PublicBookingPage,
+});
 
 type Company = { id: string; name: string; trade_name: string | null; phone: string | null };
 type Service = { id: string; name: string; price: number; estimated_duration: number | null };
