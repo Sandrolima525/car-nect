@@ -74,7 +74,7 @@ function OrdensPage() {
           supabase.from("service_orders").select("id,customer_id,vehicle_id,status,total,created_at").eq("company_id", id).order("created_at", { ascending: false }),
         ]);
 
-      for (const result of [customerRes, vehicleRes, employeeRes, serviceRes, orderRes]) {
+      for (const result of [customerRes, vehicleRes, serviceRes, orderRes]) {
         if (result.error) throw result.error;
       }
 
