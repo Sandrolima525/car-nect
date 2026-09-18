@@ -20,13 +20,14 @@ type Service = { id: string; name: string; price: number; estimated_duration: nu
 
 function PublicBookingPage() {
   const { slug } = Route.useParams();
-  const [company, setCompany] = useState<Company | null>(null);\n  const [brand, setBrand] = useState<BrandColors>(DEFAULT_BRAND);
+  const [company, setCompany] = useState<Company | null>(null);
+  const [themeBrand, setThemeBrand] = useState<BrandColors>(DEFAULT_BRAND);
   const [services, setServices] = useState<Service[]>([]);
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [plate, setPlate] = useState("");
-  const [brand, setBrand] = useState("");
+  const [vehicleBrand, setVehicleBrand] = useState("");
   const [model, setModel] = useState("");
   const [date, setDate] = useState(new Date(Date.now() + 86400000).toLocaleDateString("en-CA"));
   const [time, setTime] = useState("");
@@ -51,7 +52,7 @@ function PublicBookingPage() {
         if (!c.data) throw new Error("Página de agendamento não encontrada.");
         const s = await supabase.from("services").select("id,name,price,estimated_duration").eq("company_id", c.data.id).eq("active", true).order("name");
         if (s.error) throw s.error;
-        setCompany(c.data as Company); setBrand({...DEFAULT_BRAND,...(c.data?.brand_colors??{})}); setServices((s.data ?? []) as Service[]);
+        setCompany(c.data as Company); setThemeBrand({...DEFAULT_BRAND,...(c.data?.brand_colors??{})}); setServices((s.data ?? []) as Service[]);
       } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a página."); }
       finally { setLoading(false); }
     })();
@@ -74,7 +75,7 @@ function PublicBookingPage() {
       setSaving(true); setError("");
       const result = await (supabase as any).rpc("create_public_booking_multi", {
         _slug: slug, _name: name.trim(), _phone: phone.trim(), _service_ids: serviceIds, _date: date, _time: time,
-        _vehicle_plate: plate.trim() || null, _vehicle_brand: brand.trim() || null, _vehicle_model: model.trim() || null, _notes: notes.trim() || null,
+        _vehicle_plate: plate.trim() || null, _vehicle_brand: vehicleBrand.trim() || null, _vehicle_model: model.trim() || null, _notes: notes.trim() || null,
       });
       if (result.error) throw result.error;
       setDone(true);
@@ -82,12 +83,13 @@ function PublicBookingPage() {
     finally { setSaving(false); }
   };
 
-  const rawWhatsapp = (company?.whatsapp_number ?? company?.phone ?? "").replace(/\D/g, "");\n  const whatsappNumber = rawWhatsapp.startsWith("55") ? rawWhatsapp : rawWhatsapp ? "55" + rawWhatsapp : "";
+  const rawWhatsapp = (company?.whatsapp_number ?? company?.phone ?? "").replace(/\D/g, "");
+  const whatsappNumber = rawWhatsapp.startsWith("55") ? rawWhatsapp : rawWhatsapp ? "55" + rawWhatsapp : "";
   const whatsappMessage = encodeURIComponent(`Olá! Recebi um novo agendamento pela agenda online da ${company?.trade_name ?? company?.name ?? ""}.\nNome: ${name}\nWhatsApp: ${phone}\nServiços: ${selectedServices.map(s => s.name).join(", ")}\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\nHorário: ${time}\nAguardo a confirmação.`);
   if (loading) return <div className="flex min-h-screen items-center justify-center p-6 text-muted-foreground">Carregando...</div>;
   if (!company) return <div className="flex min-h-screen items-center justify-center p-6"><Card className="w-full max-w-md"><CardContent className="p-6 text-center text-destructive">{error || "Página não encontrada."}</CardContent></Card></div>;
 
-  return <main style={brandCssVariables(brand)} className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-primary/[0.06] px-4 py-8 sm:py-12">
+  return <main style={brandCssVariables(themeBrand)} className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-primary/[0.06] px-4 py-8 sm:py-12">
     <div className="mx-auto max-w-2xl">
       <div className="mb-8 text-center">{company.logo_url ? <img src={company.logo_url} alt={"Logo " + (company.trade_name ?? company.name)} className="mx-auto mb-3 h-16 max-w-40 object-contain" /> : <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-bold">LP</div>}<h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{company.trade_name ?? company.name}</h1><p className="mt-1 text-sm text-muted-foreground">Escolha o serviço e veja somente os horários realmente disponíveis.</p></div>
       {done ? <Card className="overflow-hidden border-border/60 shadow-xl shadow-black/[0.06]"><CardContent className="p-8 text-center sm:p-10"><CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-600" /><h2 className="text-xl font-bold">Agendamento solicitado!</h2><p className="mt-2 text-sm text-muted-foreground">O horário foi reservado e já entrou na agenda da empresa.</p><Button className="mt-6 w-full" asChild disabled={!whatsappNumber}><a href={(whatsappNumber ? "https://wa.me/" + whatsappNumber + "?text=" : "https://wa.me/?text=") + whatsappMessage} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />{whatsappNumber ? "Enviar confirmação no WhatsApp" : "WhatsApp não configurado"}</a></Button></CardContent></Card> :
@@ -97,7 +99,7 @@ function PublicBookingPage() {
         <div className="space-y-2"><Label>Serviços *</Label><div className="grid gap-2">{services.map(s => <label key={s.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/70 bg-background/60 p-4 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/[0.035] hover:shadow-sm"><input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => { setServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setTime(""); }} className="h-4 w-4" /><span className="flex-1 text-sm font-medium">{s.name}</span><span className="text-xs text-muted-foreground">{s.estimated_duration ?? 60} min · R$ {Number(s.price).toFixed(2).replace(".", ",")}</span></label>)}</div></div>
         <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Data *</Label><div className="relative"><CalendarDays className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" type="date" min={new Date().toISOString().slice(0,10)} value={date} onChange={e => setDate(e.target.value)} /></div></div><div className="space-y-2"><Label>Horário *</Label><Select value={time} onValueChange={setTime} disabled={!serviceIds.length || slotsLoading}><SelectTrigger><SelectValue placeholder={slotsLoading ? "Calculando..." : slots.length ? "Horários disponíveis" : "Nenhum horário"} /></SelectTrigger><SelectContent>{slots.map(s => <SelectItem key={s} value={s}><Clock3 className="mr-2 inline h-3.5 w-3.5" />{s}</SelectItem>)}</SelectContent></Select></div></div>
         {selectedServices.length > 0 && <div className="rounded-xl bg-muted/50 p-4 text-sm"><strong>{selectedServices.map(s => s.name).join(" + ")}</strong><br />Duração total: {totalDuration} minutos · Valor total: R$ {totalPrice.toFixed(2).replace(".", ",")}</div>}
-        <div className="rounded-xl border p-4"><p className="mb-3 font-medium">Veículo</p><div className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label>Placa</Label><Input value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="ABC1D23" /></div><div className="space-y-2"><Label>Marca</Label><Input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Honda" /></div><div className="space-y-2"><Label>Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Civic" /></div></div></div>
+        <div className="rounded-xl border p-4"><p className="mb-3 font-medium">Veículo</p><div className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label>Placa</Label><Input value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="ABC1D23" /></div><div className="space-y-2"><Label>Marca</Label><Input value={vehicleBrand} onChange={e => setVehicleBrand(e.target.value)} placeholder="Honda" /></div><div className="space-y-2"><Label>Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Civic" /></div></div></div>
         <div className="space-y-2"><Label>Observações</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opcional" /></div>
         <Button className="w-full rounded-xl shadow-lg shadow-primary/20" size="lg" onClick={() => void submit()} disabled={saving || !time}>{saving ? "Enviando..." : "Solicitar horário"}</Button>
         <p className="text-center text-xs text-muted-foreground">Os horários exibidos seguem o funcionamento configurado pela empresa e são recalculados conforme a duração de cada serviço.</p>
