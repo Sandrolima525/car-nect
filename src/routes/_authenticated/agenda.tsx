@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CarFront, Check, ChevronLeft, ChevronRight, Clock3, Droplets, MessageCircle, Plus, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ function AgendaPage(){
   }catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar a agenda.");}finally{setLoading(false)}
  };
  useEffect(()=>{void load()},[date]);
- const compatible=services.filter(s=>s.vehicle_category==="all"||s.vehicle_category===category);
+ const compatible=useMemo(()=>services.filter(s=>s.vehicle_category==="all"||s.vehicle_category===category),[services,category]);
  useEffect(()=>{setServiceIds(p=>p.filter(id=>compatible.some(s=>s.id===id)));setWalkinTime("")},[category]);
  useEffect(()=>{if(!open||!serviceIds.length)return void setSlots([]);void(async()=>{const r=await (supabase as any).rpc("get_public_available_slots_multi",{_slug:slug,_date:date,_service_ids:serviceIds});if(r.error)setError(r.error.message);else setSlots((r.data??[]).map((x:any)=>x.slot.slice(0,5)))})()},[open,slug,date,serviceIds]);
  const resetForm=()=>{setName("");setPhone("");setCategory("Hatch");setPlate("");setBrand("");setModel("");setServiceIds([]);setWalkinTime("");setSlots([]);setNotes("")};
