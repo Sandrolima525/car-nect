@@ -20,7 +20,10 @@ type Appointment = {
   appointment_date: string; appointment_time: string; status: string; notes: string | null;
   vehicle_plate: string | null;
   service: Service | null;
+  services: Service[];
   vehicle: Vehicle | null;
+  totalPrice: number;
+  totalDuration: number;
 };
 
 const today = () => new Date().toLocaleDateString("en-CA");
@@ -88,11 +91,20 @@ function AgendaPage() {
         if (!ars.error) for (const item of ars.data ?? []) appointmentServiceMap.set(item.appointment_id, [...(appointmentServiceMap.get(item.appointment_id) ?? []), item]);
       }
       const vehicleMap = new Map(vehicleRows.map(v => [v.id, v]));
-      setAppointments(appointmentRows.map((row: any) => ({
-        ...row,
-        service: serviceMap.get(row.service_id) ?? null,
-        vehicle: vehicleMap.get(row.vehicle_id) ?? null,
-      })) as Appointment[]);
+      setAppointments(appointmentRows.map((row: any) => {
+        const linked = appointmentServiceMap.get(row.id) ?? [];
+        const rowServices = linked.map(item => serviceMap.get(item.service_id)).filter(Boolean) as Service[];
+        const fallback = serviceMap.get(row.service_id);
+        const finalServices = rowServices.length ? rowServices : (fallback ? [fallback] : []);
+        return {
+          ...row,
+          service: fallback ?? null,
+          services: finalServices,
+          vehicle: vehicleMap.get(row.vehicle_id) ?? null,
+          totalPrice: linked.length ? linked.reduce((sum, item) => sum + Number(item.price), 0) : Number(fallback?.price ?? 0),
+          totalDuration: linked.length ? linked.reduce((sum, item) => sum + Number(item.duration_minutes ?? 60), 0) : Number(fallback?.estimated_duration ?? 60),
+        };
+      }) as Appointment[]);
 
       const company = await (supabase as any).from("companies").select("public_booking_slug").eq("id", id).single();
       if (!company.error) setPublicSlug(company.data?.public_booking_slug ?? "");
