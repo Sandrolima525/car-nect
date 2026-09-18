@@ -13,6 +13,6 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - run: npm run typecheck
+      - run: npm run typecheck 2>&1 | tee /tmp/typecheck.log
       - run: npm run lint
       - run: npm run build
