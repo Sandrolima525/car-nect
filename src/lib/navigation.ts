@@ -1,90 +1,18 @@
-import {
-  CalendarDays,
-  Car,
-  ClipboardList,
-  LayoutDashboard,
-  Settings,
-  Sparkles,
-  Users,
-  Wallet,
-  BarChart3,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarDays, LayoutDashboard, Sparkles, type LucideIcon } from "lucide-react";
 import type { LinkProps } from "@tanstack/react-router";
 
 export type NavItem = {
   label: string;
   to: NonNullable<LinkProps["to"]>;
   icon: LucideIcon;
-  /** Módulo já implementado (false = navegação preparada para o próximo passo). */
   ready: boolean;
   description: string;
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  {
-    label: "Dashboard",
-    to: "/dashboard",
-    icon: LayoutDashboard,
-    ready: true,
-    description: "Visão geral da operação do dia.",
-  },
-  {
-    label: "Clientes",
-    to: "/clientes",
-    icon: Users,
-    ready: true,
-    description: "Cadastro e gerenciamento dos clientes da empresa.",
-  },
-  {
-    label: "Veículos",
-    to: "/veiculos",
-    icon: Car,
-    ready: true,
-    description: "Veículos vinculados a cada cliente e seu histórico.",
-  },
-  {
-    label: "Serviços",
-    to: "/servicos",
-    icon: Sparkles,
-    ready: true,
-    description: "Catálogo de serviços, preços e duração estimada.",
-  },
-  {
-    label: "Ordens de Serviço",
-    to: "/ordens",
-    icon: ClipboardList,
-    ready: true,
-    description: "Abertura e acompanhamento dos atendimentos.",
-  },
-  {
-    label: "Agenda",
-    to: "/agenda",
-    icon: CalendarDays,
-    ready: true,
-    description: "Agendamentos e organização do dia.",
-  },
-  {
-    label: "Financeiro",
-    to: "/financeiro",
-    icon: Wallet,
-    ready: true,
-    description: "Pagamentos e movimentações da empresa.",
-  },
-  {
-    label: "Relatórios",
-    to: "/relatorios",
-    icon: BarChart3,
-    ready: true,
-    description: "Indicadores e análises do negócio.",
-  },
-  {
-    label: "Configurações",
-    to: "/configuracoes",
-    icon: Settings,
-    ready: true,
-    description: "Dados da empresa e preferências do sistema.",
-  },
+  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, ready: true, description: "Resumo do dia." },
+  { label: "Agendamentos", to: "/agenda", icon: CalendarDays, ready: true, description: "Clientes e horários." },
+  { label: "Serviços", to: "/servicos", icon: Sparkles, ready: true, description: "Serviços, duração e preços." },
 ];
 
 export function findNavItem(pathname: string): NavItem | undefined {
