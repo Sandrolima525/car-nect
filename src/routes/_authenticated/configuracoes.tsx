@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ImagePlus, Save } from "lucide-react";
+import { ImagePlus, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,92 +8,38 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentCompanyId } from "@/services/company";
 
-export const Route = createFileRoute("/_authenticated/configuracoes")({
-  component: ConfiguracoesPage,
-});
+type DayKey="mon"|"tue"|"wed"|"thu"|"fri"|"sat"|"sun";
+type Day={enabled:boolean;open:string;close:string};
+type Hours=Record<DayKey,Day>;
+type Block={id:string;block_date:string;start_time:string;end_time:string;reason:string|null};
+const dayNames:Record<DayKey,string>={mon:"Segunda",tue:"Terça",wed:"Quarta",thu:"Quinta",fri:"Sexta",sat:"Sábado",sun:"Domingo"};
+const defaultHours:Hours={mon:{enabled:true,open:"08:00",close:"18:00"},tue:{enabled:true,open:"08:00",close:"18:00"},wed:{enabled:true,open:"08:00",close:"18:00"},thu:{enabled:true,open:"08:00",close:"18:00"},fri:{enabled:true,open:"08:00",close:"18:00"},sat:{enabled:true,open:"08:00",close:"18:00"},sun:{enabled:false,open:"08:00",close:"18:00"}};
 
-function ConfiguracoesPage() {
-  const [companyId, setCompanyId] = useState("");
-  const [logoUrl, setLogoUrl] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+export const Route=createFileRoute("/_authenticated/configuracoes")({component:ConfiguracoesPage});
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const id = await getCurrentCompanyId();
-        const { data: profile, error: profileError } = await supabase.from("profiles").select("role").eq("company_id", id).maybeSingle();
-        if (profileError) throw profileError;
-        if (profile?.role !== "owner") throw new Error("Somente o dono da empresa pode acessar estas configurações.");
-        const { data, error: companyError } = await (supabase as any).from("companies").select("logo_url,whatsapp_number,phone").eq("id", id).single();
-        if (companyError) throw companyError;
-        setCompanyId(id);
-        setLogoUrl(data?.logo_url ?? "");
-        setWhatsapp(data?.whatsapp_number ?? data?.phone ?? "");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Não foi possível carregar as configurações.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+function ConfiguracoesPage(){
+ const [companyId,setCompanyId]=useState(""); const [logoUrl,setLogoUrl]=useState(""); const [whatsapp,setWhatsapp]=useState("");
+ const [hours,setHours]=useState<Hours>(defaultHours); const [interval,setInterval]=useState("15"); const [advance,setAdvance]=useState("0");
+ const [blocks,setBlocks]=useState<Block[]>([]); const [blockDate,setBlockDate]=useState(new Date().toLocaleDateString("en-CA")); const [blockStart,setBlockStart]=useState("12:00"); const [blockEnd,setBlockEnd]=useState("13:00"); const [blockReason,setBlockReason]=useState("");
+ const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [uploading,setUploading]=useState(false); const [error,setError]=useState(""); const [message,setMessage]=useState("");
 
-  const save = async () => {
-    try {
-      setSaving(true); setError(""); setMessage("");
-      const { error: updateError } = await (supabase as any).from("companies").update({
-        logo_url: logoUrl.trim() || null,
-        whatsapp_number: whatsapp.replace(/\D/g, "") || null,
-        updated_at: new Date().toISOString(),
-      }).eq("id", companyId);
-      if (updateError) throw updateError;
-      setMessage("Configurações salvas.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível salvar.");
-    } finally {
-      setSaving(false);
-    }
-  };
+ const loadBlocks=async(id:string)=>{const r=await supabase.from("booking_blocks").select("id,block_date,start_time,end_time,reason").eq("company_id",id).order("block_date").order("start_time");if(r.error)throw r.error;setBlocks((r.data??[]) as Block[])};
+ useEffect(()=>{void(async()=>{try{const id=await getCurrentCompanyId();const p=await supabase.from("profiles").select("role").eq("company_id",id).maybeSingle();if(p.error)throw p.error;if(p.data?.role!=="owner")throw new Error("Somente o dono da empresa pode acessar estas configurações.");const c=await (supabase as any).from("companies").select("logo_url,whatsapp_number,phone,business_hours,booking_interval_minutes,booking_min_advance_minutes").eq("id",id).single();if(c.error)throw c.error;setCompanyId(id);setLogoUrl(c.data?.logo_url??"");setWhatsapp(c.data?.whatsapp_number??c.data?.phone??"");setHours({...defaultHours,...(c.data?.business_hours??{})});setInterval(String(c.data?.booking_interval_minutes??15));setAdvance(String(c.data?.booking_min_advance_minutes??0));await loadBlocks(id);}catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar as configurações.");}finally{setLoading(false)}})()},[]);
 
-  const uploadLogo = async (file: File) => {
-    if (!companyId) return;
-    if (!file.type.startsWith("image/")) return setError("Escolha uma imagem.");
-    if (file.size > 2 * 1024 * 1024) return setError("A logo deve ter no máximo 2 MB.");
-    try {
-      setUploading(true); setError(""); setMessage("");
-      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-      const path = companyId + "/logo." + ext;
-      const upload = await supabase.storage.from("company-logos").upload(path, file, { upsert: true, contentType: file.type });
-      if (upload.error) throw upload.error;
-      const publicUrl = supabase.storage.from("company-logos").getPublicUrl(path).data.publicUrl;
-      setLogoUrl(publicUrl);
-      const { error: updateError } = await (supabase as any).from("companies").update({ logo_url: publicUrl, updated_at: new Date().toISOString() }).eq("id", companyId);
-      if (updateError) throw updateError;
-      setMessage("Logo atualizada.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível enviar a logo.");
-    } finally {
-      setUploading(false);
-    }
-  };
+ const save=async()=>{try{setSaving(true);setError("");setMessage("");const payload={logo_url:logoUrl.trim()||null,whatsapp_number:whatsapp.replace(/\D/g,"")||null,business_hours:hours,booking_interval_minutes:Math.max(5,Number(interval)||15),booking_min_advance_minutes:Math.max(0,Number(advance)||0),updated_at:new Date().toISOString()};const r=await (supabase as any).from("companies").update(payload).eq("id",companyId);if(r.error)throw r.error;setMessage("Configurações salvas.");}catch(e){setError(e instanceof Error?e.message:"Não foi possível salvar.");}finally{setSaving(false)}};
+ const uploadLogo=async(file:File)=>{if(!companyId)return;if(!file.type.startsWith("image/"))return setError("Escolha uma imagem.");if(file.size>2*1024*1024)return setError("A logo deve ter no máximo 2 MB.");try{setUploading(true);setError("");const ext=file.name.split(".").pop()?.toLowerCase()||"png";const path=companyId+"/logo."+ext;const r=await supabase.storage.from("company-logos").upload(path,file,{upsert:true,contentType:file.type});if(r.error)throw r.error;const url=supabase.storage.from("company-logos").getPublicUrl(path).data.publicUrl;setLogoUrl(url);const u=await (supabase as any).from("companies").update({logo_url:url,updated_at:new Date().toISOString()}).eq("id",companyId);if(u.error)throw u.error;setMessage("Logo atualizada.");}catch(e){setError(e instanceof Error?e.message:"Não foi possível enviar a logo.");}finally{setUploading(false)}};
+ const addBlock=async()=>{if(!blockDate||!blockStart||!blockEnd||blockEnd<=blockStart)return setError("Informe um intervalo de bloqueio válido.");try{setError("");const r=await supabase.from("booking_blocks").insert({company_id:companyId,block_date:blockDate,start_time:blockStart,end_time:blockEnd,reason:blockReason.trim()||null});if(r.error)throw r.error;setBlockReason("");await loadBlocks(companyId);setMessage("Horário bloqueado.");}catch(e){setError(e instanceof Error?e.message:"Não foi possível bloquear o horário.")}};
+ const removeBlock=async(id:string)=>{const r=await supabase.from("booking_blocks").delete().eq("id",id).eq("company_id",companyId);if(r.error)setError(r.error.message);else await loadBlocks(companyId)};
 
-  if (loading) return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>;
-
-  return <div className="mx-auto max-w-4xl space-y-7">
-    <div><div className="mb-2 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Administração</div><h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Configurações</h2><p className="text-sm text-muted-foreground">Configurações da empresa e do agendamento público.</p></div>
-    {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-    {message && <div className="rounded-lg bg-green-500/10 p-3 text-sm text-green-700">{message}</div>}
-    <Card className="overflow-hidden border-border/60 shadow-sm">
-      <CardHeader className="border-b border-border/50 bg-muted/20"><h3 className="font-semibold">Identidade da empresa</h3><p className="text-sm text-muted-foreground">Personalize como o LavaPro aparece para seus clientes.</p></CardHeader>
-      <CardContent className="space-y-5">
-        <div className="space-y-2"><Label>Logo</Label><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border bg-muted">{logoUrl ? <img src={logoUrl} alt="Logo da empresa" className="h-full w-full object-contain" /> : <ImagePlus className="h-8 w-8 text-muted-foreground" />}</div><div><Input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => { const file = e.target.files?.[0]; if (file) void uploadLogo(file); }} disabled={uploading} /><p className="mt-2 text-xs text-muted-foreground">PNG, JPG, WEBP ou SVG · máximo 2 MB.</p></div></div></div>
-        <div className="space-y-2"><Label>WhatsApp para receber agendamentos *</Label><Input value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="(48) 99999-9999" /><p className="text-xs text-muted-foreground">Quando um cliente finalizar um agendamento público, o botão de confirmação abrirá o WhatsApp deste número.</p></div>
-        <Button onClick={() => void save()} disabled={saving || uploading}><Save className="mr-2 h-4 w-4" />{saving ? "Salvando..." : "Salvar configurações"}</Button>
-      </CardContent>
-    </Card>
-  </div>;
+ if(loading)return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>;
+ return <div className="mx-auto max-w-5xl space-y-7">
+  <div><div className="mb-2 inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Administração</div><h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Configurações</h2><p className="text-sm text-muted-foreground">Tudo que controla a experiência da LavaPro e da agenda pública.</p></div>
+  {error&&<div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}{message&&<div className="rounded-lg bg-green-500/10 p-3 text-sm text-green-700">{message}</div>}
+  <Card><CardHeader><h3 className="font-semibold">Identidade</h3></CardHeader><CardContent className="space-y-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border bg-muted">{logoUrl?<img src={logoUrl} alt="Logo da empresa" className="h-full w-full object-contain"/>:<ImagePlus className="h-8 w-8 text-muted-foreground"/>}</div><div><Input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e=>{const file=e.target.files?.[0];if(file)void uploadLogo(file)}} disabled={uploading}/><p className="mt-2 text-xs text-muted-foreground">PNG, JPG, WEBP ou SVG · máximo 2 MB.</p></div></div><div className="space-y-2"><Label>WhatsApp da empresa</Label><Input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} placeholder="(48) 99999-9999"/></div></CardContent></Card>
+  <Card><CardHeader><h3 className="font-semibold">Horário de funcionamento</h3><p className="text-sm text-muted-foreground">A agenda pública só oferece horários dentro destes períodos.</p></CardHeader><CardContent className="space-y-3">{(Object.keys(dayNames) as DayKey[]).map(k=><div key={k} className="grid items-center gap-3 rounded-xl border p-3 sm:grid-cols-[130px_80px_1fr_1fr]"><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={hours[k].enabled} onChange={e=>setHours(h=>({...h,[k]:{...h[k],enabled:e.target.checked}}))}/>{dayNames[k]}</label><span className="text-xs text-muted-foreground">{hours[k].enabled?"Aberto":"Fechado"}</span><Input type="time" disabled={!hours[k].enabled} value={hours[k].open} onChange={e=>setHours(h=>({...h,[k]:{...h[k],open:e.target.value}}))}/><Input type="time" disabled={!hours[k].enabled} value={hours[k].close} onChange={e=>setHours(h=>({...h,[k]:{...h[k],close:e.target.value}}))}/></div>)}
+   <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Intervalo dos horários</Label><Input type="number" min="5" step="5" value={interval} onChange={e=>setInterval(e.target.value)}/><p className="text-xs text-muted-foreground">Ex.: 15 = 08:00, 08:15, 08:30...</p></div><div className="space-y-2"><Label>Antecedência mínima (minutos)</Label><Input type="number" min="0" step="15" value={advance} onChange={e=>setAdvance(e.target.value)}/><p className="text-xs text-muted-foreground">0 permite agendar sem antecedência mínima.</p></div></div><Button onClick={()=>void save()} disabled={saving||uploading}><Save className="mr-2 h-4 w-4"/>{saving?"Salvando...":"Salvar configurações"}</Button>
+  </CardContent></Card>
+  <Card><CardHeader><h3 className="font-semibold">Bloquear horários</h3><p className="text-sm text-muted-foreground">Use para almoço, manutenção, feriados ou qualquer indisponibilidade temporária.</p></CardHeader><CardContent className="space-y-4"><div className="grid gap-3 sm:grid-cols-4"><Input type="date" value={blockDate} onChange={e=>setBlockDate(e.target.value)}/><Input type="time" value={blockStart} onChange={e=>setBlockStart(e.target.value)}/><Input type="time" value={blockEnd} onChange={e=>setBlockEnd(e.target.value)}/><Input value={blockReason} onChange={e=>setBlockReason(e.target.value)} placeholder="Motivo (opcional)"/></div><Button variant="outline" onClick={()=>void addBlock()}><Plus className="mr-2 h-4 w-4"/>Bloquear horário</Button><div className="divide-y rounded-xl border">{blocks.length===0?<p className="p-4 text-sm text-muted-foreground">Nenhum bloqueio cadastrado.</p>:blocks.map(b=><div key={b.id} className="flex items-center justify-between gap-3 p-4"><div><p className="font-medium">{new Date(b.block_date+"T12:00:00").toLocaleDateString("pt-BR")} · {b.start_time.slice(0,5)}–{b.end_time.slice(0,5)}</p><p className="text-xs text-muted-foreground">{b.reason||"Indisponibilidade"}</p></div><Button variant="ghost" size="icon" onClick={()=>void removeBlock(b.id)}><Trash2 className="h-4 w-4"/></Button></div>)}</div></CardContent></Card>
+  <Card><CardContent className="p-5"><p className="text-sm font-semibold">Link público</p><p className="mt-1 break-all text-sm text-muted-foreground">{typeof window!=="undefined"?window.location.origin+"/agendar/lavapro":"/agendar/lavapro"}</p></CardContent></Card>
+ </div>;
 }
