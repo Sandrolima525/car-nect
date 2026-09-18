@@ -16,7 +16,7 @@ export const Route = createFileRoute("/agendar/$slug")({
 });
 
 type Company = { id: string; name: string; trade_name: string | null; phone: string | null; whatsapp_number: string | null; logo_url: string | null; brand_colors: BrandColors | null };
-type Service = { id: string; name: string; price: number; estimated_duration: number | null; vehicle_category: string | null };
+type Service = { id: string; name: string; price: number; estimated_duration: number | null; vehicle_category: string | null; category: string | null };
 
 function PublicBookingPage() {
   const { slug } = Route.useParams();
@@ -42,7 +42,7 @@ function PublicBookingPage() {
   const compatibleServices = useMemo(() => services.filter(s => !vehicleCategory || !s.vehicle_category || s.vehicle_category === "all" || s.vehicle_category === vehicleCategory), [services, vehicleCategory]);
   const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
   const baseServices = useMemo(() => compatibleServices.filter(s => s.category !== "Adicional"), [compatibleServices]);
-  const addOnServices = useMemo(() => compatibleServices.filter(s => (s as any).category === "Adicional"), [compatibleServices]);
+  const addOnServices = useMemo(() => compatibleServices.filter(s => s.category === "Adicional"), [compatibleServices]);
   const totalDuration = selectedServices.reduce((sum, s) => sum + (s.estimated_duration ?? 60), 0);
   const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price), 0);
 
