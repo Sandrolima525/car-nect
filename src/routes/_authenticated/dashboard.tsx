@@ -34,6 +34,11 @@ function DashboardPage() {
     return <p className="text-sm text-muted-foreground">Carregando dados da conta...</p>;
   }
 
+  if (profile && !company) {
+    return <CompanySetup />;
+  }
+
+
   return (
     <div className="space-y-8">
       <header>
