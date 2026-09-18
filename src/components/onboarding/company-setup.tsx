@@ -26,12 +26,12 @@ export function CompanySetup() {
 
     const { error: rpcError } = await supabase.rpc("create_company_for_current_user", {
       _name: name,
-      _trade_name: tradeName || null,
-      _document: document || null,
-      _phone: phone || null,
-      _email: user?.email ?? null,
-      _city: city || null,
-      _state: state || null,
+      _trade_name: tradeName || undefined,
+      _document: document || undefined,
+      _phone: phone || undefined,
+      _email: user?.email ?? undefined,
+      _city: city || undefined,
+      _state: state || undefined,
     });
 
     setLoading(false);
