@@ -60,50 +60,74 @@ export type Database = {
         Row: {
           appointment_date: string
           appointment_time: string
+          check_in_at: string | null
           company_id: string
+          completed_at: string | null
           created_at: string
           customer_id: string | null
           customer_name: string
           customer_phone: string
+          customer_user_id: string | null
           id: string
           notes: string | null
+          ready_at: string | null
           service_id: string | null
+          source: string
           status: string
+          total_duration: number
+          total_price: number
           updated_at: string
           vehicle_id: string | null
           vehicle_plate: string | null
+          washing_at: string | null
         }
         Insert: {
           appointment_date: string
           appointment_time: string
+          check_in_at?: string | null
           company_id: string
+          completed_at?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name: string
           customer_phone: string
+          customer_user_id?: string | null
           id?: string
           notes?: string | null
+          ready_at?: string | null
           service_id?: string | null
+          source?: string
           status?: string
+          total_duration?: number
+          total_price?: number
           updated_at?: string
           vehicle_id?: string | null
           vehicle_plate?: string | null
+          washing_at?: string | null
         }
         Update: {
           appointment_date?: string
           appointment_time?: string
+          check_in_at?: string | null
           company_id?: string
+          completed_at?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name?: string
           customer_phone?: string
+          customer_user_id?: string | null
           id?: string
           notes?: string | null
+          ready_at?: string | null
           service_id?: string | null
+          source?: string
           status?: string
+          total_duration?: number
+          total_price?: number
           updated_at?: string
           vehicle_id?: string | null
           vehicle_plate?: string | null
+          washing_at?: string | null
         }
         Relationships: [
           {
@@ -184,6 +208,7 @@ export type Database = {
           business_hours: Json
           city: string | null
           created_at: string
+          currency: string
           document: string | null
           email: string | null
           id: string
@@ -193,6 +218,7 @@ export type Database = {
           phone: string | null
           public_booking_enabled: boolean
           public_booking_slug: string | null
+          simultaneous_capacity: number
           state: string | null
           trade_name: string | null
           updated_at: string
@@ -208,6 +234,7 @@ export type Database = {
           business_hours?: Json
           city?: string | null
           created_at?: string
+          currency?: string
           document?: string | null
           email?: string | null
           id?: string
@@ -217,6 +244,7 @@ export type Database = {
           phone?: string | null
           public_booking_enabled?: boolean
           public_booking_slug?: string | null
+          simultaneous_capacity?: number
           state?: string | null
           trade_name?: string | null
           updated_at?: string
@@ -232,6 +260,7 @@ export type Database = {
           business_hours?: Json
           city?: string | null
           created_at?: string
+          currency?: string
           document?: string | null
           email?: string | null
           id?: string
@@ -241,6 +270,7 @@ export type Database = {
           phone?: string | null
           public_booking_enabled?: boolean
           public_booking_slug?: string | null
+          simultaneous_capacity?: number
           state?: string | null
           trade_name?: string | null
           updated_at?: string
@@ -684,6 +714,7 @@ export type Database = {
           name: string
           price: number
           updated_at: string
+          vehicle_category: string
         }
         Insert: {
           active?: boolean
@@ -696,6 +727,7 @@ export type Database = {
           name: string
           price?: number
           updated_at?: string
+          vehicle_category?: string
         }
         Update: {
           active?: boolean
@@ -708,6 +740,7 @@ export type Database = {
           name?: string
           price?: number
           updated_at?: string
+          vehicle_category?: string
         }
         Relationships: [
           {
@@ -740,6 +773,7 @@ export type Database = {
       vehicles: {
         Row: {
           brand: string | null
+          category: string
           color: string | null
           company_id: string | null
           created_at: string
@@ -756,6 +790,7 @@ export type Database = {
         }
         Insert: {
           brand?: string | null
+          category?: string
           color?: string | null
           company_id?: string | null
           created_at?: string
@@ -772,6 +807,7 @@ export type Database = {
         }
         Update: {
           brand?: string | null
+          category?: string
           color?: string | null
           company_id?: string | null
           created_at?: string
@@ -921,6 +957,22 @@ export type Database = {
           _slug: string
           _time: string
           _vehicle_brand?: string
+          _vehicle_model?: string
+          _vehicle_plate?: string
+        }
+        Returns: string
+      }
+      create_walk_in_appointment: {
+        Args: {
+          _company_id: string
+          _date: string
+          _name: string
+          _notes?: string
+          _phone: string
+          _service_ids: string[]
+          _time: string
+          _vehicle_brand?: string
+          _vehicle_category: string
           _vehicle_model?: string
           _vehicle_plate?: string
         }
