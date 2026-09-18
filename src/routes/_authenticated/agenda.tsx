@@ -59,15 +59,34 @@ function AgendaPage() {
       const id = companyId || await getCurrentCompanyId();
       setCompanyId(id);
       const [a, s, c] = await Promise.all([
-        supabase.from("appointments").select("id,customer_id,customer_name,customer_phone,appointment_date,appointment_time,status,notes,vehicle_plate,service:services(id,name,price,estimated_duration),vehicle:vehicles(id,plate,brand,model)").eq("company_id", id).eq("appointment_date", date).order("appointment_time"),
-        supabase.from("services").select("id,name,price,estimated_duration").eq("company_id", id).eq("active", true).order("name"),
-        supabase.from("customers").select("id,name,phone").eq("company_id", id).order("name").limit(2000),
+        (supabase as any).from("appointments").select("id,customer_id,customer_name,customer_phone,appointment_date,appointment_time,status,notes,vehicle_id,vehicle_plate,service_id").eq("company_id", id).eq("appointment_date", date).order("appointment_time"),
+        (supabase as any).from("services").select("id,name,price,estimated_duration").eq("company_id", id).eq("active", true).order("name"),
+        (supabase as any).from("customers").select("id,name,phone").eq("company_id", id).order("name").limit(2000),
       ]);
-      if (a.error) throw a.error; if (s.error) throw s.error; if (c.error) throw c.error;
-      setAppointments((a.data ?? []) as unknown as Appointment[]);
-      const company = await supabase.from("companies").select("public_booking_slug").eq("id", id).single();
+      if (a.error) throw a.error;
+      if (s.error) throw s.error;
+      if (c.error) throw c.error;
+
+      const appointmentRows = a.data ?? [];
+      const serviceRows = (s.data ?? []) as Service[];
+      const vehicleIds = appointmentRows.map((row: any) => row.vehicle_id).filter(Boolean);
+      let vehicleRows: Vehicle[] = [];
+      if (vehicleIds.length) {
+        const v = await (supabase as any).from("vehicles").select("id,plate,brand,model").in("id", vehicleIds);
+        if (v.error) throw v.error;
+        vehicleRows = (v.data ?? []) as Vehicle[];
+      }
+      const serviceMap = new Map(serviceRows.map(svc => [svc.id, svc]));
+      const vehicleMap = new Map(vehicleRows.map(v => [v.id, v]));
+      setAppointments(appointmentRows.map((row: any) => ({
+        ...row,
+        service: serviceMap.get(row.service_id) ?? null,
+        vehicle: vehicleMap.get(row.vehicle_id) ?? null,
+      })) as Appointment[]);
+
+      const company = await (supabase as any).from("companies").select("public_booking_slug").eq("id", id).single();
       if (!company.error) setPublicSlug(company.data?.public_booking_slug ?? "");
-      setServices((s.data ?? []) as Service[]);
+      setServices(serviceRows);
       setCustomers((c.data ?? []) as Customer[]);
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a agenda."); }
     finally { setLoading(false); }
