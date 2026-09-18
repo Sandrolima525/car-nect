@@ -54,6 +54,8 @@ function AgendaPage() {
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [customerDetail, setCustomerDetail] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -136,6 +138,7 @@ function AgendaPage() {
   useEffect(() => { if (showForm) void loadSlots(); }, [serviceIds, date, showForm]);
 
   const openNew = () => {
+    setEditingId(null);
     setShowForm(true); setPhone(""); setName(""); setVehicles([]); setVehicleId("none"); setPlate(""); setBrand(""); setModel("");
     setServiceIds(services[0]?.id ? [services[0].id] : []); setTime(""); setNotes(""); setCustomerFound(false); setCustomerHistory([]); setError("");
   };
@@ -154,8 +157,14 @@ function AgendaPage() {
         setPlate(v.data[0].plate ?? ""); setBrand(v.data[0].brand ?? ""); setModel(v.data[0].model ?? "");
       }
     }
-    const last = await supabase.from("appointments").select("service_id").eq("company_id", companyId).eq("customer_id", customer.id).order("appointment_date", { ascending: false }).order("appointment_time", { ascending: false }).limit(1).maybeSingle();
-    if (!last.error && last.data?.service_id) setServiceIds([last.data.service_id]);
+    const history = await supabase.from("appointments").select("appointment_date,appointment_time,status,service_id").eq("company_id", companyId).eq("customer_id", customer.id).order("appointment_date",{ascending:false}).order("appointment_time",{ascending:false}).limit(6);
+    if (!history.error) {
+      const ids=[...new Set((history.data??[]).map((x:any)=>x.service_id).filter(Boolean))];
+      const hs=ids.length?await supabase.from("services").select("id,name,price").in("id",ids):{data:[],error:null};
+      const sm=new Map((hs.data??[]).map((x:any)=>[x.id,x]));
+      setCustomerHistory((history.data??[]).map((x:any)=>({appointment_date:x.appointment_date,appointment_time:x.appointment_time,status:x.status,services:sm.get(x.service_id)?.name??"Serviço",total:Number(sm.get(x.service_id)?.price??0)})));
+      if(history.data?.[0]?.service_id) setServiceIds([history.data[0].service_id]);
+    }
   };
 
   const chooseVehicle = (value: string) => {
@@ -163,6 +172,23 @@ function AgendaPage() {
     const v = vehicles.find(item => item.id === value);
     if (!v || value === "none") { setPlate(""); setBrand(""); setModel(""); return; }
     setPlate(v.plate ?? ""); setBrand(v.brand ?? ""); setModel(v.model ?? "");
+  };
+
+  const openEdit = (a: Appointment) => {
+    setEditingId(a.id); setShowForm(true); setPhone(a.customer_phone); setName(a.customer_name);
+    setVehicleId(a.vehicle?.id ?? "none"); setPlate(a.vehicle?.plate ?? a.vehicle_plate ?? ""); setBrand(a.vehicle?.brand ?? ""); setModel(a.vehicle?.model ?? "");
+    setServiceIds(a.services.map(s=>s.id)); setTime(a.appointment_time.slice(0,5)); setNotes(a.notes ?? ""); setCustomerFound(false); setCustomerHistory([]); setError("");
+  };
+  const openCustomerDetail = async (a: Appointment) => {
+    const customer=customers.find(c=>c.id===a.customer_id)??{id:a.customer_id??"",name:a.customer_name,phone:a.customer_phone};
+    setCustomerDetail(customer);
+    if(!customer.id)return;
+    const h=await supabase.from("appointments").select("appointment_date,appointment_time,status,service_id").eq("company_id",companyId).eq("customer_id",customer.id).order("appointment_date",{ascending:false}).order("appointment_time",{ascending:false}).limit(20);
+    if(h.error)return;
+    const ids=[...new Set((h.data??[]).map((x:any)=>x.service_id).filter(Boolean))];
+    const hs=ids.length?await supabase.from("services").select("id,name,price").in("id",ids):{data:[],error:null};
+    const sm=new Map((hs.data??[]).map((x:any)=>[x.id,x]));
+    setCustomerHistory((h.data??[]).map((x:any)=>({appointment_date:x.appointment_date,appointment_time:x.appointment_time,status:x.status,services:sm.get(x.service_id)?.name??"Serviço",total:Number(sm.get(x.service_id)?.price??0)})));
   };
 
   const save = async () => {
@@ -186,6 +212,12 @@ function AgendaPage() {
         savedVehicleId = r.data.id;
       }
 
+      if(editingId){
+        const r=await supabase.from("appointments").update({customer_id:customerId,vehicle_id:savedVehicleId,service_id:serviceIds[0],customer_name:name.trim(),customer_phone:phone.trim(),vehicle_plate:plate.trim().toUpperCase()||null,appointment_date:date,appointment_time:time,notes:notes.trim()||null}).eq("id",editingId).eq("company_id",companyId);
+        if(r.error){if(r.error.code==="23505")throw new Error("Esse horário acabou de ser ocupado. Escolha outro.");throw r.error;}
+        const dr=await (supabase as any).from("appointment_services").delete().eq("appointment_id",editingId); if(dr.error)throw dr.error;
+        const sr=await (supabase as any).from("appointment_services").insert(selectedServices.map(s=>({appointment_id:editingId,service_id:s.id,price:Number(s.price),duration_minutes:s.estimated_duration??60}))); if(sr.error)throw sr.error;
+      }else{
       const r = await supabase.from("appointments").insert({
         company_id: companyId, customer_id: customerId, vehicle_id: savedVehicleId, service_id: serviceIds[0],
         customer_name: name.trim(), customer_phone: phone.trim(), vehicle_plate: plate.trim().toUpperCase() || null,
@@ -196,7 +228,8 @@ function AgendaPage() {
         throw r.error;
       }
       if (r.data?.[0]?.id) { const sr = await (supabase as any).from("appointment_services").insert(selectedServices.map(s => ({ appointment_id: r.data[0].id, service_id: s.id, price: Number(s.price), duration_minutes: s.estimated_duration ?? 60 }))); if (sr.error) throw sr.error; }
-      setShowForm(false); await load();
+      }
+      setShowForm(false); setEditingId(null); await load();
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar o agendamento."); }
     finally { setSaving(false); }
   };
@@ -245,7 +278,7 @@ function AgendaPage() {
     {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
     {showForm && <Card>
-      <CardHeader><div className="flex items-center justify-between"><div><h3 className="font-semibold">Novo agendamento</h3><p className="text-sm text-muted-foreground">Digite o WhatsApp. Se já existir, nome e veículo serão puxados automaticamente.</p></div><Button variant="ghost" size="icon" onClick={() => setShowForm(false)}><X className="h-4 w-4" /></Button></div></CardHeader>
+      <CardHeader><div className="flex items-center justify-between"><div><h3 className="font-semibold">{editingId?"Editar agendamento":"Novo agendamento"}</h3><p className="text-sm text-muted-foreground">Digite o WhatsApp. Se já existir, nome e veículo serão puxados automaticamente.</p></div><Button variant="ghost" size="icon" onClick={() => setShowForm(false)}><X className="h-4 w-4" /></Button></div></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2"><Label>WhatsApp *</Label><div className="flex gap-2"><Input value={phone} onChange={e => setPhone(e.target.value)} onBlur={() => void findCustomer()} placeholder="(48) 99999-9999" /><Button type="button" variant="outline" onClick={() => void findCustomer()}><Search className="h-4 w-4" /></Button></div>{customerFound && <p className="text-xs text-green-600">Cliente encontrado. Veículos e histórico foram carregados.</p>}{customerFound && customerHistory.length > 0 && <div className="mt-2 rounded-lg border bg-muted/30 p-3"><p className="mb-2 text-xs font-semibold">Últimos atendimentos</p><div className="space-y-1">{customerHistory.slice(0,4).map((h,i)=><div key={i} className="flex justify-between gap-3 text-xs"><span>{new Date(h.appointment_date+"T12:00:00").toLocaleDateString("pt-BR")} · {h.services || "Serviço"}</span><span className="font-medium">{money(h.total)}</span></div>)}</div></div>}</div>
@@ -283,6 +316,7 @@ function AgendaPage() {
         <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-muted px-3 py-1 text-xs">{a.status === "pending" ? "Pendente" : a.status === "confirmed" ? "Confirmado" : a.status === "completed" ? "Concluído" : "Cancelado"}</span>{a.status !== "cancelled" && a.status !== "completed" && <><Button variant="outline" size="sm" onClick={() => openEdit(a)}>✎ Editar</Button><Button variant="outline" size="sm" onClick={() => void updateStatus(a.id, a.status === "pending" ? "confirmed" : "completed")}>{a.status === "pending" ? <><Check className="mr-2 h-4 w-4" />Confirmar</> : <><Check className="mr-2 h-4 w-4" />Concluir</>}</Button></>}{a.status !== "cancelled" && <Button variant="outline" size="sm" onClick={() => whatsapp(a)}><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</Button>}{a.status !== "cancelled" && a.status !== "completed" && <Button variant="ghost" size="icon" onClick={() => void updateStatus(a.id, "cancelled")}><X className="h-4 w-4" /></Button>}<Button variant="ghost" size="icon" onClick={() => void remove(a.id)}><Trash2 className="h-4 w-4" /></Button></div>
       </div>)}</div>}
     </CardContent></Card>
+  {customerDetail && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={()=>setCustomerDetail(null)}><Card className="w-full max-w-lg shadow-2xl" onClick={e=>e.stopPropagation()}><CardHeader><div className="flex items-center justify-between"><div><h3 className="font-semibold">{customerDetail.name}</h3><p className="text-sm text-muted-foreground">{customerDetail.phone||"WhatsApp não informado"}</p></div><Button variant="ghost" size="icon" onClick={()=>setCustomerDetail(null)}><X className="h-4 w-4"/></Button></div></CardHeader><CardContent><p className="mb-3 text-sm font-semibold">Histórico de atendimentos</p>{customerHistory.length===0?<p className="text-sm text-muted-foreground">Nenhum atendimento registrado.</p>:<div className="divide-y rounded-xl border">{customerHistory.map((h,i)=><div key={i} className="flex items-center justify-between gap-3 p-3 text-sm"><div><p>{new Date(h.appointment_date+"T12:00:00").toLocaleDateString("pt-BR")} · {h.appointment_time.slice(0,5)}</p><p className="text-xs text-muted-foreground">{h.services} · {h.status==="completed"?"Concluído":h.status==="confirmed"?"Confirmado":h.status==="cancelled"?"Cancelado":"Pendente"}</p></div><span className="font-semibold">{money(h.total)}</span></div>)}</div>}</CardContent></Card></div>}
   </div>;
 }
 
