@@ -74,6 +74,11 @@ export function CrudPage({ table, title, description, singular, fields, columns,
     try {
       setSaving(true);
       setError("");
+      const missing = fields.filter((field) => field.required && !String(form[field.key] ?? "").trim());
+      if (missing.length) {
+        throw new Error(`Preencha: ${missing.map((field) => field.label).join(", ")}.`);
+      }
+      if (!companyId) throw new Error("Empresa não identificada. Atualize a página e tente novamente.");
       const payload: Record<string, unknown> = { ...form, company_id: companyId };
       fields.forEach((field) => {
         if (field.type === "number") payload[field.key] = form[field.key] ? Number(form[field.key]) : null;
