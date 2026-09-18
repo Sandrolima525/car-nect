@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { NAV_ITEMS, findNavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/types/database";
+import { brandCssVariables, DEFAULT_BRAND, type BrandColors } from "@/lib/branding";
+import { supabase } from "@/integrations/supabase/client";
 
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("");
@@ -55,13 +57,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const { profile, signOut } = useAuth();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);\n  const [brand, setBrand] = useState<BrandColors>(DEFAULT_BRAND);
   const current = findNavItem(pathname);
   const displayName = profile?.full_name ?? profile?.email ?? "Usuário";
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);\n  useEffect(() => {\n    if (!company?.id) return;\n    void (async () => {\n      const { data } = await (supabase as any).from("companies").select("brand_colors").eq("id", company.id).maybeSingle();\n      if (data?.brand_colors) setBrand({ ...DEFAULT_BRAND, ...data.brand_colors });\n    })();\n  }, [company?.id]);
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-primary/[0.035]">
+    <div style={brandCssVariables(brand)} className="flex min-h-screen bg-gradient-to-br from-background via-background to-primary/[0.035]">
       <aside className="hidden w-64 shrink-0 border-r border-sidebar-border/70 bg-sidebar/95 shadow-xl shadow-black/[0.04] lg:block"><div className="sticky top-0 h-screen"><SidebarContent /></div></aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-[4.25rem] items-center gap-3 border-b border-border/60 bg-background/80 px-4 shadow-sm backdrop-blur-2xl sm:px-6">
