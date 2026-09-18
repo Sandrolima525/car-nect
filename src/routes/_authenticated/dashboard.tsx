@@ -52,11 +52,11 @@ function DashboardPage() {
     .reduce((sum, a) => sum + Number(a.service?.price ?? 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-primary">Hoje</p>
-          <h2 className="text-2xl font-bold tracking-tight">Visão do dia</h2>
+          <div className="mb-2 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary ring-1 ring-primary/15">Visão geral · Hoje</div>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Visão do dia</h2>
           <p className="text-sm text-muted-foreground">{new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</p>
         </div>
         <Button asChild><Link to="/agenda"><Plus className="mr-2 h-4 w-4" />Novo agendamento</Link></Button>
@@ -96,5 +96,5 @@ function DashboardPage() {
 }
 
 function Metric({ icon: Icon, label, value }: { icon: typeof CalendarDays; label: string; value: string }) {
-  return <Card><CardContent className="flex items-center gap-4 p-5"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div></CardContent></Card>;
+  return <Card className="overflow-hidden border-border/60 bg-card/90 shadow-sm shadow-black/[0.03] transition-all hover:-translate-y-0.5 hover:shadow-md"><CardContent className="flex items-center gap-4 rounded-2xl p-5"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm ring-1 ring-primary/10"><Icon className="h-5 w-5" /></div><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div></CardContent></Card>;
 }
