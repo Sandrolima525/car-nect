@@ -31,6 +31,7 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [companyName, setCompanyName] = useState("Empresa");
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
 
   const period = useMemo(() => ({ weekStart: startOfWeek(selectedDate), weekEnd: endOfWeek(selectedDate), monthStart: startOfMonth(selectedDate), monthEnd: endOfMonth(selectedDate) }), [selectedDate]);
 
@@ -57,8 +58,9 @@ function DashboardPage() {
     try {
       setLoading(true); setError("");
       const companyId = await getCurrentCompanyId();
-      const company = await supabase.from("companies").select("name").eq("id", companyId).maybeSingle();
+      const company = await supabase.from("companies").select("name,logo_url").eq("id", companyId).maybeSingle();
       if (!company.error && company.data?.name) setCompanyName(company.data.name);
+      if (!company.error) setCompanyLogo(company.data?.logo_url ?? null);
       const baseSelect = "id,customer_name,customer_phone,appointment_date,appointment_time,status,service:services(id,name,price,estimated_duration)";
       const [day, periodRows, futureRows] = await Promise.all([
         supabase.from("appointments").select(baseSelect).eq("company_id", companyId).eq("appointment_date", selectedDate).order("appointment_time"),
@@ -102,7 +104,12 @@ function DashboardPage() {
 
   return <div className="mx-auto max-w-6xl space-y-5 pb-8">
     <div className="flex items-center justify-between gap-3">
-      <div><p className="text-xs font-semibold uppercase tracking-wider text-primary">{companyName}</p><h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Olá 👋</h2><p className="text-sm text-muted-foreground capitalize">{displayDate}</p></div>
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-primary/20 bg-background shadow-md ring-4 ring-primary/10">
+          {companyLogo ? <img src={companyLogo} alt={"Logo " + companyName} className="h-full w-full object-cover" /> : <span className="text-sm font-bold text-primary">{companyName.slice(0, 2).toUpperCase()}</span>}
+        </div>
+        <div className="min-w-0"><p className="truncate text-xs font-semibold uppercase tracking-wider text-primary">{companyName}</p><h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Olá 👋</h2><p className="text-sm text-muted-foreground capitalize">{displayDate}</p></div>
+      </div>
       <Button asChild size="icon" className="h-11 w-11 rounded-full shadow-sm" title="Novo agendamento"><Link to="/agenda"><Plus className="h-5 w-5"/></Link></Button>
     </div>
 
