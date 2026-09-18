@@ -30,6 +30,7 @@ function DashboardPage() {
   const [periodView, setPeriodView] = useState<"week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [companyName, setCompanyName] = useState("Empresa");
 
   const period = useMemo(() => ({ weekStart: startOfWeek(selectedDate), weekEnd: endOfWeek(selectedDate), monthStart: startOfMonth(selectedDate), monthEnd: endOfMonth(selectedDate) }), [selectedDate]);
 
@@ -56,6 +57,8 @@ function DashboardPage() {
     try {
       setLoading(true); setError("");
       const companyId = await getCurrentCompanyId();
+      const company = await supabase.from("companies").select("name").eq("id", companyId).maybeSingle();
+      if (!company.error && company.data?.name) setCompanyName(company.data.name);
       const baseSelect = "id,customer_name,customer_phone,appointment_date,appointment_time,status,service:services(id,name,price,estimated_duration)";
       const [day, periodRows, futureRows] = await Promise.all([
         supabase.from("appointments").select(baseSelect).eq("company_id", companyId).eq("appointment_date", selectedDate).order("appointment_time"),
@@ -85,7 +88,7 @@ function DashboardPage() {
     const raw = (a.customer_phone ?? "").replace(/\D/g,"");
     const phone = raw.startsWith("55") ? raw : "55" + raw;
     if (raw.length < 8) return setError("Este cliente não possui um WhatsApp cadastrado.");
-    const message = encodeURIComponent(`Olá, ${a.customer_name}! 🚗✨ Seu veículo está pronto e o serviço foi concluído. Pode passar para fazer a retirada. Obrigado por escolher a LavaPro!`);
+    const message = encodeURIComponent(`Olá, ${a.customer_name}! 🚗✨ Seu veículo está pronto e o serviço foi concluído. Pode passar para fazer a retirada. Obrigado por escolher a ${companyName}!`);
     window.open(`https://wa.me/${phone}?text=${message}`,"_blank","noopener,noreferrer");
   };
 
@@ -99,7 +102,7 @@ function DashboardPage() {
 
   return <div className="mx-auto max-w-6xl space-y-5 pb-8">
     <div className="flex items-center justify-between gap-3">
-      <div><p className="text-xs font-semibold uppercase tracking-wider text-primary">LavaPro</p><h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Olá 👋</h2><p className="text-sm text-muted-foreground capitalize">{displayDate}</p></div>
+      <div><p className="text-xs font-semibold uppercase tracking-wider text-primary">{companyName}</p><h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Olá 👋</h2><p className="text-sm text-muted-foreground capitalize">{displayDate}</p></div>
       <Button asChild size="icon" className="h-11 w-11 rounded-full shadow-sm" title="Novo agendamento"><Link to="/agenda"><Plus className="h-5 w-5"/></Link></Button>
     </div>
 
