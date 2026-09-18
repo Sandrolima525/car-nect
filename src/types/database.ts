@@ -12,10 +12,10 @@ export type ServiceOrder = Tables["service_orders"]["Row"];
 export type ServiceOrderItem = Tables["service_order_items"]["Row"];
 export type Payment = Tables["payments"]["Row"];
 
-export type AppRole = Database["public"]["Enums"]["app_role"];
+export type AppRole = "owner" | "admin" | "manager" | "employee";
 export type ServiceOrderStatus = Database["public"]["Enums"]["service_order_status"];
-export type PaymentMethod = Database["public"]["Enums"]["payment_method"];
-export type PaymentStatus = Database["public"]["Enums"]["payment_status"];
+export type PaymentMethod = string;
+export type PaymentStatus = string;
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   owner: "Proprietário",
