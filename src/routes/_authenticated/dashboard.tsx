@@ -33,6 +33,7 @@ const startOfWeek = (base: string) => {
 };
 const endOfWeek = (base: string) => shiftDate(startOfWeek(base), 6);
 const startOfMonth = (base: string) => base.slice(0, 8) + "01";
+const maxDate = (a: string, b: string) => (a > b ? a : b);
 const endOfMonth = (base: string) => {
   const d = new Date(base.slice(0, 8) + "01T12:00:00");
   d.setMonth(d.getMonth() + 1, 0);
@@ -71,7 +72,7 @@ function DashboardPage() {
         .select("id,customer_name,customer_phone,appointment_date,appointment_time,status,service:services(name,price,estimated_duration)")
         .eq("company_id", companyId)
         .gte("appointment_date", period.weekStart)
-        .lte("appointment_date", period.monthEnd)
+        .lte("appointment_date", maxDate(period.weekEnd, period.monthEnd))
         .order("appointment_date")
         .order("appointment_time");
       if (periodError) throw periodError;
