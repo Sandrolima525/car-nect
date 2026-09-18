@@ -16,15 +16,13 @@ export const Route = createFileRoute("/agendar/$slug")({
 });
 
 type Company = { id: string; name: string; trade_name: string | null; phone: string | null; whatsapp_number: string | null; logo_url: string | null; brand_colors: BrandColors | null };
-type Service = { id: string; name: string; price: number; estimated_duration: number | null };
+type Service = { id: string; name: string; price: number; estimated_duration: number | null; vehicle_category: string | null };
 
 function PublicBookingPage() {
   const { slug } = Route.useParams();
-  const [authChecked, setAuthChecked] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
   const [company, setCompany] = useState<Company | null>(null);
   const [themeBrand, setThemeBrand] = useState<BrandColors>(DEFAULT_BRAND);
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<Service[]>([]); const [vehicleCategory, setVehicleCategory] = useState("");
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -41,22 +39,12 @@ function PublicBookingPage() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
 
+  const compatibleServices = useMemo(() => services.filter(s => !vehicleCategory || !s.vehicle_category || s.vehicle_category === "all" || s.vehicle_category === vehicleCategory), [services, vehicleCategory]);
   const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
   const totalDuration = selectedServices.reduce((sum, s) => sum + (s.estimated_duration ?? 60), 0);
   const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price), 0);
 
-  useEffect(() => {
-    void (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
-        return;
-      }
-      setUserEmail(session.user.email ?? "");
-      setName((session.user.user_metadata?.full_name as string | undefined) ?? "");
-      setAuthChecked(true);
-    })();
-  }, [slug]);
+  useEffect(() => { setServiceIds(prev => prev.filter(id => compatibleServices.some(s => s.id === id))); setTime(""); }, [vehicleCategory, compatibleServices]);
 
   useEffect(() => {
     void (async () => {
@@ -65,7 +53,7 @@ function PublicBookingPage() {
         const c = await supabase.from("companies").select("id,name,trade_name,phone,whatsapp_number,logo_url,brand_colors").eq("public_booking_slug", slug).eq("public_booking_enabled", true).maybeSingle();
         if (c.error) throw c.error;
         if (!c.data) throw new Error("Página de agendamento não encontrada.");
-        const s = await supabase.from("services").select("id,name,price,estimated_duration").eq("company_id", c.data.id).eq("active", true).order("name");
+        const s = await supabase.from("services").select("id,name,price,estimated_duration,vehicle_category").eq("company_id", c.data.id).eq("active", true).order("name");
         if (s.error) throw s.error;
         setCompany(c.data as Company); setThemeBrand({ ...DEFAULT_BRAND, ...((c.data.brand_colors as Partial<BrandColors> | null) ?? {}) }); setServices((s.data ?? []) as Service[]);
       } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a página."); }
@@ -85,7 +73,7 @@ function PublicBookingPage() {
   }, [company, serviceIds, date, slug]);
 
   const submit = async () => {
-    if (!company || !name.trim() || phone.replace(/\D/g, "").length < 8 || !serviceIds.length || !date || !time) return setError("Preencha nome, WhatsApp, serviço, data e horário.");
+    if (!company || !vehicleCategory || !name.trim() || phone.replace(/\D/g, "").length < 8 || !serviceIds.length || !date || !time) return setError("Preencha nome, WhatsApp, serviço, data e horário.");
     try {
       setSaving(true); setError("");
       const result = await (supabase as any).rpc("create_public_booking_multi", {
@@ -102,7 +90,7 @@ function PublicBookingPage() {
   const whatsappNumber = rawWhatsapp.startsWith("55") ? rawWhatsapp : rawWhatsapp ? "55" + rawWhatsapp : "";
   const companyDisplayName = company?.name ?? company?.trade_name ?? "empresa";
   const whatsappMessage = encodeURIComponent(`Olá! Recebi um novo agendamento pela agenda online da ${companyDisplayName}.\nNome: ${name}\nWhatsApp: ${phone}\nServiços: ${selectedServices.map(s => s.name).join(", ")}\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\nHorário: ${time}\nAguardo a confirmação.`);
-  if (!authChecked) return <div className="flex min-h-screen items-center justify-center p-6 text-muted-foreground">Verificando sua conta...</div>;
+
   if (loading) return <div className="flex min-h-screen items-center justify-center p-6 text-muted-foreground">Carregando...</div>;
   if (!company) return <div className="flex min-h-screen items-center justify-center p-6"><Card className="w-full max-w-md"><CardContent className="p-6 text-center text-destructive">{error || "Página não encontrada."}</CardContent></Card></div>;
 
@@ -113,7 +101,7 @@ function PublicBookingPage() {
       <Card className="overflow-hidden border-border/60 shadow-xl shadow-black/[0.06]"><CardHeader className="border-b border-primary/10 bg-gradient-to-r from-primary/[0.08] via-muted/20 to-background p-6"><h2 className="text-lg font-semibold">Agendar atendimento</h2><p className="text-sm text-muted-foreground">Preencha seus dados e escolha os serviços.</p></CardHeader><CardContent className="space-y-5">
         {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
         <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" /></div><div className="space-y-2"><Label>WhatsApp *</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(48) 99999-9999" /></div></div>
-        <div className="space-y-2"><Label>Serviços *</Label><div className="grid gap-2">{services.map(s => <label key={s.id} className={`group flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm ${serviceIds.includes(s.id) ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20" : "border-border/70 bg-background/60 hover:border-primary/40 hover:bg-primary/[0.035]"}`}><input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => { setServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setTime(""); }} className="h-4 w-4 accent-primary" /><span className="flex-1 text-sm font-medium">{s.name}</span><span className="text-xs text-muted-foreground">{s.estimated_duration ?? 60} min · R$ {Number(s.price).toFixed(2).replace(".", ",")}</span></label>)}</div></div>
+        <div className="space-y-2"><Label>Categoria do veículo *</Label><div className="grid grid-cols-3 gap-2">{["Hatch","Sedan","SUV/Picape"].map(v => <button type="button" key={v} onClick={() => setVehicleCategory(v)} className={`rounded-xl border p-3 text-sm font-semibold ${vehicleCategory === v ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>{v}</button>)}</div></div><div className="space-y-2"><Label>Serviços *</Label><div className="grid gap-2">{compatibleServices.map(s => <label key={s.id} className={`group flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm ${serviceIds.includes(s.id) ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20" : "border-border/70 bg-background/60 hover:border-primary/40 hover:bg-primary/[0.035]"}`}><input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => { setServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setTime(""); }} className="h-4 w-4 accent-primary" /><span className="flex-1 text-sm font-medium">{s.name}</span><span className="text-xs text-muted-foreground">{s.estimated_duration ?? 60} min · R$ {Number(s.price).toFixed(2).replace(".", ",")}</span></label>)}</div></div>
         <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Data *</Label><div className="relative"><CalendarDays className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" type="date" min={new Date().toISOString().slice(0,10)} value={date} onChange={e => setDate(e.target.value)} /></div></div><div className="space-y-2"><Label>Horário *</Label><Select value={time} onValueChange={setTime} disabled={!serviceIds.length || slotsLoading}><SelectTrigger><SelectValue placeholder={slotsLoading ? "Calculando..." : slots.length ? "Horários disponíveis" : "Nenhum horário"} /></SelectTrigger><SelectContent>{slots.map(s => <SelectItem key={s} value={s}><Clock3 className="mr-2 inline h-3.5 w-3.5" />{s}</SelectItem>)}</SelectContent></Select></div></div>
         {selectedServices.length > 0 && <div className="rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.08] to-background p-4 text-sm shadow-sm"><strong>{selectedServices.map(s => s.name).join(" + ")}</strong><br />Duração total: {totalDuration} minutos · Valor total: R$ {totalPrice.toFixed(2).replace(".", ",")}</div>}
         <div className="rounded-2xl border border-primary/10 bg-primary/[0.02] p-4 shadow-inner"><p className="mb-3 font-medium">Veículo</p><div className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label>Placa</Label><Input value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="ABC1D23" /></div><div className="space-y-2"><Label>Marca</Label><Input value={vehicleBrand} onChange={e => setVehicleBrand(e.target.value)} placeholder="Honda" /></div><div className="space-y-2"><Label>Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Civic" /></div></div></div>
