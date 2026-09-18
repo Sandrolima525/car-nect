@@ -78,19 +78,17 @@ function AgendaPage() {
         (supabase as any).from("services").select("id,name,price,estimated_duration").eq("company_id", id).eq("active", true).order("name"),
         (supabase as any).from("customers").select("id,name,phone").eq("company_id", id).order("name").limit(2000),
       ]);
-      if (a.error) throw a.error;
-      if (s.error) { setServicesError(s.error.message); throw s.error; }
-      setServicesError("");
-      if (c.error) throw c.error;
+      if (a.error) throw new Error("Não foi possível carregar os agendamentos: " + a.error.message);
 
       const appointmentRows = a.data ?? [];
       const serviceRows = (s.data ?? []) as Service[];
-      const vehicleIds = appointmentRows.map((row: any) => row.vehicle_id).filter(Boolean);
+      if (s.error) setServicesError(s.error.message); else setServicesError("");
+
       let vehicleRows: Vehicle[] = [];
+      const vehicleIds = appointmentRows.map((row: any) => row.vehicle_id).filter(Boolean);
       if (vehicleIds.length) {
         const v = await (supabase as any).from("vehicles").select("id,plate,brand,model").in("id", vehicleIds);
-        if (v.error) throw v.error;
-        vehicleRows = (v.data ?? []) as Vehicle[];
+        if (!v.error) vehicleRows = (v.data ?? []) as Vehicle[];
       }
       const serviceMap = new Map(serviceRows.map(svc => [svc.id, svc]));
       const appointmentIds = appointmentRows.map((row: any) => row.id);
@@ -118,7 +116,7 @@ function AgendaPage() {
       const company = await (supabase as any).from("companies").select("name,public_booking_slug").eq("id", id).single();
       if (!company.error) { setPublicSlug(company.data?.public_booking_slug ?? ""); setCompanyName(company.data?.name ?? "Empresa"); }
       setServices(serviceRows);
-      setCustomers((c.data ?? []) as Customer[]);
+      setCustomers(c.error ? [] : ((c.data ?? []) as Customer[]));
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a agenda."); }
     finally { setLoading(false); }
   };
