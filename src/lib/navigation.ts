@@ -6,7 +6,6 @@ import {
   Settings,
   Sparkles,
   Users,
-  UserSquare2,
   Wallet,
   BarChart3,
   type LucideIcon,
@@ -64,13 +63,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: CalendarDays,
     ready: true,
     description: "Agendamentos e organização do dia.",
-  },
-  {
-    label: "Funcionários",
-    to: "/funcionarios",
-    icon: UserSquare2,
-    ready: true,
-    description: "Equipe, funções e comissões.",
   },
   {
     label: "Financeiro",
