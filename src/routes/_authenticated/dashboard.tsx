@@ -165,7 +165,7 @@ function DashboardOverview() {
               <div><h3 className="font-semibold">Base de clientes</h3><p className="text-xs text-muted-foreground">Cadastros no sistema</p></div>
             </div>
             <p className="mt-5 text-3xl font-semibold">{metrics.data.customers}</p>
-            <Link to="/_authenticated/clientes" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Ver clientes <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/clientes" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Ver clientes <ArrowRight className="h-4 w-4" /></Link>
           </div>
 
           <div className="rounded-xl border border-border bg-card p-5">
@@ -182,7 +182,7 @@ function DashboardOverview() {
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-3">
           <div><h2 className="text-lg font-semibold text-foreground">Últimas ordens de serviço</h2><p className="text-sm text-muted-foreground">Os atendimentos mais recentes.</p></div>
-          <Link to="/_authenticated/ordens" className="hidden items-center gap-1 text-sm font-medium text-primary hover:underline sm:inline-flex">Ver todas <ArrowRight className="h-4 w-4" /></Link>
+          <Link to="/ordens" className="hidden items-center gap-1 text-sm font-medium text-primary hover:underline sm:inline-flex">Ver todas <ArrowRight className="h-4 w-4" /></Link>
         </div>
 
         {orders.isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : orders.error ? <ErrorCard /> : !orders.data?.length ? (
@@ -190,7 +190,7 @@ function DashboardOverview() {
             <Wrench className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="mt-3 font-medium">Nenhuma ordem encontrada</p>
             <p className="mt-1 text-sm text-muted-foreground">Crie a primeira ordem para começar a acompanhar a operação.</p>
-            <Link to="/_authenticated/ordens" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"><Plus className="h-4 w-4" /> Criar ordem</Link>
+            <Link to="/ordens" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"><Plus className="h-4 w-4" /> Criar ordem</Link>
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-border bg-card">
