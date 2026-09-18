@@ -57,6 +57,33 @@ function AuthPage() {
       return;
     }
 
+    if (mode === "signup") {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+          data: { full_name: fullName },
+        },
+      });
+      setLoading(false);
+      if (signUpError) {
+        setError(
+          signUpError.message.includes("already registered")
+            ? "Já existe uma conta com este e-mail."
+            : signUpError.message,
+        );
+        return;
+      }
+      if (data.session) {
+        navigate({ to: "/dashboard", replace: true });
+        return;
+      }
+      setMode("login");
+      setMessage("Conta criada. Confirme o e-mail enviado e depois faça login.");
+      return;
+    }
+
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (signInError) {
