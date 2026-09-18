@@ -57,7 +57,7 @@ function PublicBookingPage() {
     }
     try {
       setSaving(true); setError("");
-      const { error: bookingError } = await supabase.rpc("create_public_booking", {
+      const { error: bookingError } = await (supabase as any).rpc("create_public_booking", {
         _slug: slug,
         _name: name.trim(),
         _phone: phone.trim(),
