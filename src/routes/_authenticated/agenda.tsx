@@ -238,7 +238,7 @@ function AgendaPage() {
       <Metric label="Agendamentos" value={String(appointments.length)} />
       <Metric label="Confirmados" value={String(appointments.filter(a => a.status === "confirmed").length)} />
       <Metric label="Concluídos" value={String(appointments.filter(a => a.status === "completed").length)} />
-      <Metric label="Valor agendado" value={money(appointments.filter(a => a.status !== "cancelled").reduce((s,a) => s + Number(a.service?.price ?? 0), 0))} />
+      <Metric label="Valor agendado" value={money(appointments.filter(a => a.status !== "cancelled").reduce((s,a) => s + a.totalPrice, 0))} />
     </div>
 
     <Card><CardHeader><h3 className="font-semibold">Agenda de {new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}</h3></CardHeader><CardContent className="p-0">
