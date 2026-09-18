@@ -18,7 +18,8 @@ export function normalizeHex(value: string, fallback: string) {
 function foregroundFor(hex: string) {
   const h = normalizeHex(hex, "#000000").slice(1);
   const rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
-  const luminance = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  const red = rgb[0] ?? 0, green = rgb[1] ?? 0, blue = rgb[2] ?? 0;
+  const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
   return luminance > 0.52 ? "#0f172a" : "#ffffff";
 }
 
