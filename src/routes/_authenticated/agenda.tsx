@@ -57,7 +57,8 @@ function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [customerFound, setCustomerFound] = useState(false);\n  const [customerHistory, setCustomerHistory] = useState<CustomerHistory[]>([]);
+  const [customerFound, setCustomerFound] = useState(false);
+  const [customerHistory, setCustomerHistory] = useState<CustomerHistory[]>([]);
   const [publicSlug, setPublicSlug] = useState("");
 
   const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
