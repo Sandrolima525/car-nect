@@ -1,113 +1,21 @@
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowDownToLine, ArrowUpToLine, DollarSign, Download, Plus } from "lucide-react";
+import { CalendarDays, CarFront, CircleDollarSign, TrendingUp } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { getCurrentCompanyId } from "@/services/company";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-
-export const Route = createFileRoute("/_authenticated/financeiro")({
-  head: () => ({
-    meta: [
-      { title: "Financeiro — LavaPro Gestão" },
-      { name: "description", content: "Pagamentos e movimentações financeiras da empresa." },
-      { property: "og:title", content: "Financeiro — LavaPro Gestão" },
-      { property: "og:description", content: "Pagamentos e movimentações financeiras da empresa." },
-    ],
-  }),
-  component: FinanceiroPage,
-});
-
-const MOCK_LANCAMENTOS = [
-  { id: "1", description: "Lavagem Completa (João Silva)", date: "10/10/2023", value: "R$ 80,00", type: "entrada", method: "PIX" },
-  { id: "2", description: "Produtos de Limpeza", date: "09/10/2023", value: "R$ 150,00", type: "saida", method: "Cartão de Crédito" },
-  { id: "3", description: "Ducha Simples (Carlos Sousa)", date: "09/10/2023", value: "R$ 40,00", type: "entrada", method: "Dinheiro" },
-];
-
-function FinanceiroPage() {
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Financeiro</h2>
-          <p className="text-muted-foreground">Controle de receitas e despesas.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Exportar
-          </Button>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Lançamento
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saldo Atual</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ 2.450,00</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Entradas (Mês)</CardTitle>
-            <ArrowUpToLine className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">R$ 3.100,00</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saídas (Mês)</CardTitle>
-            <ArrowDownToLine className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">R$ 650,00</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Lançamentos Recentes</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-4 sm:pl-6">Descrição</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Meio de pagamento</TableHead>
-                <TableHead className="text-right pr-4 sm:pr-6">Valor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {MOCK_LANCAMENTOS.map((lanc) => (
-                <TableRow key={lanc.id}>
-                  <TableCell className="pl-4 sm:pl-6 font-medium">
-                    <div className="flex items-center gap-2">
-                     {lanc.type === 'entrada' ? <ArrowUpToLine className="h-4 w-4 text-green-500"/> : <ArrowDownToLine className="h-4 w-4 text-red-500"/>}
-                     {lanc.description}
-                    </div>
-                  </TableCell>
-                  <TableCell>{lanc.date}</TableCell>
-                  <TableCell><Badge variant="secondary">{lanc.method}</Badge></TableCell>
-                  <TableCell className={`text-right pr-4 sm:pr-6 font-semibold ${lanc.type === 'entrada' ? 'text-green-600' : 'text-red-600'}`}>
-                    {lanc.type === 'entrada' ? '+' : '-'}{lanc.value}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
+export const Route=createFileRoute("/_authenticated/financeiro")({component:FinanceiroPage});
+const money=(n:number)=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const today=()=>new Date().toLocaleDateString("en-CA");
+function FinanceiroPage(){
+ const [date,setDate]=useState(today());const [rows,setRows]=useState<any[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState("");
+ const [month,setMonth]=useState(today().slice(0,7));
+ useEffect(()=>{void(async()=>{try{setLoading(true);const id=await getCurrentCompanyId();const start=month+"-01";const d=new Date(start+"T12:00:00");d.setMonth(d.getMonth()+1,0);const end=d.toLocaleDateString("en-CA");const r=await supabase.from("appointments").select("id,customer_name,appointment_date,appointment_time,total_price,status").eq("company_id",id).gte("appointment_date",start).lte("appointment_date",end).eq("status","completed").order("appointment_date",{ascending:false}).order("appointment_time",{ascending:false});if(r.error)throw r.error;setRows(r.data??[])}catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar o financeiro.")}finally{setLoading(false)}})()},[month]);
+ const monthRevenue=rows.reduce((s,r)=>s+Number(r.total_price??0),0);const monthCount=rows.length;const ticket=monthCount?monthRevenue/monthCount:0;const dayRows=rows.filter(r=>r.appointment_date===date);const dayRevenue=dayRows.reduce((s,r)=>s+Number(r.total_price??0),0);
+ return <div className="mx-auto max-w-6xl space-y-6 pb-10"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Gestão</p><h1 className="mt-1 text-3xl font-bold">Financeiro</h1><p className="text-sm text-muted-foreground">Faturamento baseado nos atendimentos concluídos.</p></div>{error&&<div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}<div className="flex flex-wrap gap-3"><div><label className="mb-1 block text-xs font-medium text-muted-foreground">Mês</label><Input type="month" value={month} onChange={e=>setMonth(e.target.value)}/></div><div><label className="mb-1 block text-xs font-medium text-muted-foreground">Dia</label><Input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div></div>
+ <div className="grid gap-4 md:grid-cols-3"><Metric icon={CircleDollarSign} label="Faturamento do mês" value={loading?"—":money(monthRevenue)}/><Metric icon={CarFront} label="Serviços realizados" value={loading?"—":String(monthCount)}/><Metric icon={TrendingUp} label="Ticket médio" value={loading?"—":money(ticket)}/></div>
+ <Card className="rounded-2xl"><CardHeader><div className="flex items-center justify-between"><div><h2 className="font-semibold">Resumo do dia</h2><p className="text-xs text-muted-foreground">{new Date(date+"T12:00:00").toLocaleDateString("pt-BR")}</p></div><span className="text-xl font-bold">{money(dayRevenue)}</span></div></CardHeader><CardContent>{dayRows.length===0?<p className="text-sm text-muted-foreground">Nenhum atendimento concluído neste dia.</p>:<div className="divide-y">{dayRows.map(r=><div key={r.id} className="flex items-center justify-between gap-3 py-3"><div><p className="font-medium">{r.customer_name}</p><p className="text-xs text-muted-foreground">{r.appointment_time.slice(0,5)}</p></div><span className="font-semibold">{money(Number(r.total_price??0))}</span></div>)}</div>}</CardContent></Card></div>
 }
+function Metric({icon:Icon,label,value}:{icon:typeof CircleDollarSign;label:string;value:string}){return <Card className="rounded-2xl"><CardContent className="p-5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5"/></div><p className="mt-4 text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-black">{value}</p></CardContent></Card>}
