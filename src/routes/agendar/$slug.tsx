@@ -18,7 +18,7 @@ function PublicBookingPage() {
   const { slug } = Route.useParams();
   const [company, setCompany] = useState<Company | null>(null);
   const [services, setServices] = useState<Service[]>([]);
-  const [serviceId, setServiceId] = useState("");
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [plate, setPlate] = useState("");
@@ -34,7 +34,9 @@ function PublicBookingPage() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
 
-  const selectedService = useMemo(() => services.find(s => s.id === serviceId), [services, serviceId]);
+  const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
+  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.estimated_duration ?? 60), 0);
+  const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price), 0);
 
   useEffect(() => {
     void (async () => {
@@ -52,22 +54,22 @@ function PublicBookingPage() {
   }, [slug]);
 
   useEffect(() => {
-    if (!company || !serviceId || !date) { setSlots([]); setTime(""); return; }
+    if (!company || !serviceIds.length || !date) { setSlots([]); setTime(""); return; }
     void (async () => {
       setSlotsLoading(true); setError(""); setTime("");
-      const result = await (supabase as any).rpc("get_public_available_slots", { _slug: slug, _date: date, _service_id: serviceId });
+      const result = await (supabase as any).rpc("get_public_available_slots_multi", { _slug: slug, _date: date, _service_ids: serviceIds });
       if (result.error) setError(result.error.message);
       else setSlots((result.data ?? []).map((row: { slot: string }) => row.slot.slice(0,5)));
       setSlotsLoading(false);
     })();
-  }, [company, serviceId, date, slug]);
+  }, [company, serviceIds, date, slug]);
 
   const submit = async () => {
-    if (!company || !name.trim() || phone.replace(/\D/g, "").length < 8 || !serviceId || !date || !time) return setError("Preencha nome, WhatsApp, serviço, data e horário.");
+    if (!company || !name.trim() || phone.replace(/\D/g, "").length < 8 || !serviceIds.length || !date || !time) return setError("Preencha nome, WhatsApp, serviço, data e horário.");
     try {
       setSaving(true); setError("");
       const result = await (supabase as any).rpc("create_public_booking", {
-        _slug: slug, _name: name.trim(), _phone: phone.trim(), _service_id: serviceId, _date: date, _time: time,
+        _slug: slug, _name: name.trim(), _phone: phone.trim(), _service_ids: serviceIds, _date: date, _time: time,
         _vehicle_plate: plate.trim() || null, _vehicle_brand: brand.trim() || null, _vehicle_model: model.trim() || null, _notes: notes.trim() || null,
       });
       if (result.error) throw result.error;
@@ -76,7 +78,7 @@ function PublicBookingPage() {
     finally { setSaving(false); }
   };
 
-  const whatsappMessage = encodeURIComponent(`Olá! Solicitei um agendamento na ${company?.trade_name ?? company?.name ?? ""}.\nNome: ${name}\nWhatsApp: ${phone}\nServiço: ${selectedService?.name ?? ""}\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\nHorário: ${time}\nAguardo a confirmação.`);
+  const whatsappMessage = encodeURIComponent(`Olá! Solicitei um agendamento na ${company?.trade_name ?? company?.name ?? ""}.\nNome: ${name}\nWhatsApp: ${phone}\nServiços: ${selectedServices.map(s => s.name).join(", ")}\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\nHorário: ${time}\nAguardo a confirmação.`);
   if (loading) return <div className="flex min-h-screen items-center justify-center p-6 text-muted-foreground">Carregando...</div>;
   if (!company) return <div className="flex min-h-screen items-center justify-center p-6"><Card className="w-full max-w-md"><CardContent className="p-6 text-center text-destructive">{error || "Página não encontrada."}</CardContent></Card></div>;
 
@@ -87,9 +89,9 @@ function PublicBookingPage() {
       <Card><CardHeader><h2 className="font-semibold">Agendar atendimento</h2></CardHeader><CardContent className="space-y-5">
         {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
         <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" /></div><div className="space-y-2"><Label>WhatsApp *</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(48) 99999-9999" /></div></div>
-        <div className="space-y-2"><Label>Serviço *</Label><Select value={serviceId} onValueChange={setServiceId}><SelectTrigger><SelectValue placeholder="Escolha o serviço" /></SelectTrigger><SelectContent>{services.map(s => <SelectItem key={s.id} value={s.id}>{s.name} · {s.estimated_duration ?? 60} min · R$ {Number(s.price).toFixed(2).replace(".", ",")}</SelectItem>)}</SelectContent></Select></div>
-        <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Data *</Label><div className="relative"><CalendarDays className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" type="date" min={new Date().toISOString().slice(0,10)} value={date} onChange={e => setDate(e.target.value)} /></div></div><div className="space-y-2"><Label>Horário *</Label><Select value={time} onValueChange={setTime} disabled={!serviceId || slotsLoading}><SelectTrigger><SelectValue placeholder={slotsLoading ? "Calculando..." : slots.length ? "Horários disponíveis" : "Nenhum horário"} /></SelectTrigger><SelectContent>{slots.map(s => <SelectItem key={s} value={s}><Clock3 className="mr-2 inline h-3.5 w-3.5" />{s}</SelectItem>)}</SelectContent></Select></div></div>
-        {selectedService && <div className="rounded-xl bg-muted/50 p-4 text-sm"><strong>{selectedService.name}</strong><br />Duração aproximada: {selectedService.estimated_duration ?? 60} minutos · Valor: R$ {Number(selectedService.price).toFixed(2).replace(".", ",")}</div>}
+        <div className="space-y-2"><Label>Serviços *</Label><div className="grid gap-2">{services.map(s => <label key={s.id} className="flex cursor-pointer items-center gap-3 rounded-lg border p-3"><input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => { setServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setTime(""); }} className="h-4 w-4" /><span className="flex-1 text-sm font-medium">{s.name}</span><span className="text-xs text-muted-foreground">{s.estimated_duration ?? 60} min · R$ {Number(s.price).toFixed(2).replace(".", ",")}</span></label>)}</div></div>
+        <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Data *</Label><div className="relative"><CalendarDays className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" type="date" min={new Date().toISOString().slice(0,10)} value={date} onChange={e => setDate(e.target.value)} /></div></div><div className="space-y-2"><Label>Horário *</Label><Select value={time} onValueChange={setTime} disabled={!serviceIds.length || slotsLoading}><SelectTrigger><SelectValue placeholder={slotsLoading ? "Calculando..." : slots.length ? "Horários disponíveis" : "Nenhum horário"} /></SelectTrigger><SelectContent>{slots.map(s => <SelectItem key={s} value={s}><Clock3 className="mr-2 inline h-3.5 w-3.5" />{s}</SelectItem>)}</SelectContent></Select></div></div>
+        {selectedServices.length > 0 && <div className="rounded-xl bg-muted/50 p-4 text-sm"><strong>{selectedServices.map(s => s.name).join(" + ")}</strong><br />Duração total: {totalDuration} minutos · Valor total: R$ {totalPrice.toFixed(2).replace(".", ",")}</div>}
         <div className="rounded-xl border p-4"><p className="mb-3 font-medium">Veículo</p><div className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label>Placa</Label><Input value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="ABC1D23" /></div><div className="space-y-2"><Label>Marca</Label><Input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Honda" /></div><div className="space-y-2"><Label>Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Civic" /></div></div></div>
         <div className="space-y-2"><Label>Observações</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opcional" /></div>
         <Button className="w-full" size="lg" onClick={() => void submit()} disabled={saving || !time}>{saving ? "Enviando..." : "Solicitar horário"}</Button>
