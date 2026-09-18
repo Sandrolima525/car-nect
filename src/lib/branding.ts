@@ -64,11 +64,11 @@ export async function extractLogoPalette(file: File): Promise<string[]> {
     const pixels = ctx.getImageData(0, 0, size, size).data;
     const buckets = new Map<string, number>();
     for (let i = 0; i < pixels.length; i += 16) {
-      const alpha = pixels[i + 3];
+      const alpha = pixels[i + 3] ?? 0;
       if (alpha < 100) continue;
-      const r = Math.round(pixels[i] / 24) * 24;
-      const g = Math.round(pixels[i + 1] / 24) * 24;
-      const b = Math.round(pixels[i + 2] / 24) * 24;
+      const r = Math.round((pixels[i] ?? 0) / 24) * 24;
+      const g = Math.round((pixels[i + 1] ?? 0) / 24) * 24;
+      const b = Math.round((pixels[i + 2] ?? 0) / 24) * 24;
       const key = [r, g, b].map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join("");
       buckets.set(key, (buckets.get(key) ?? 0) + 1);
     }
