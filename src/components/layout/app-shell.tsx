@@ -57,10 +57,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const { profile, signOut } = useAuth();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const [mobileOpen, setMobileOpen] = useState(false);\n  const [brand, setBrand] = useState<BrandColors>(DEFAULT_BRAND);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [brand, setBrand] = useState<BrandColors>(DEFAULT_BRAND);
   const current = findNavItem(pathname);
   const displayName = profile?.full_name ?? profile?.email ?? "Usuário";
-  useEffect(() => { setMobileOpen(false); }, [pathname]);\n  useEffect(() => {\n    if (!company?.id) return;\n    const loadBrand = async () => {\n      const { data } = await (supabase as any).from("companies").select("brand_colors").eq("id", company.id).maybeSingle();\n      if (data?.brand_colors) setBrand({ ...DEFAULT_BRAND, ...data.brand_colors });\n    };\n    void loadBrand();\n    const onBrandUpdate = (event: Event) => {\n      const colors = (event as CustomEvent<BrandColors>).detail;\n      if (colors) setBrand({ ...DEFAULT_BRAND, ...colors });\n    };\n    window.addEventListener("brand-theme-updated", onBrandUpdate);\n    return () => window.removeEventListener("brand-theme-updated", onBrandUpdate);\n  }, [company?.id]);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {\n    if (!company?.id) return;\n    const loadBrand = async () => {\n      const { data } = await (supabase as any).from("companies").select("brand_colors").eq("id", company.id).maybeSingle();\n      if (data?.brand_colors) setBrand({ ...DEFAULT_BRAND, ...data.brand_colors });\n    };\n    void loadBrand();\n    const onBrandUpdate = (event: Event) => {\n      const colors = (event as CustomEvent<BrandColors>).detail;\n      if (colors) setBrand({ ...DEFAULT_BRAND, ...colors });\n    };\n    window.addEventListener("brand-theme-updated", onBrandUpdate);\n    return () => window.removeEventListener("brand-theme-updated", onBrandUpdate);\n  }, [company?.id]);
 
   return (
     <div style={brandCssVariables(brand)} className="flex min-h-screen bg-gradient-to-br from-background via-background to-primary/[0.035]">
