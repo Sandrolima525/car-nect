@@ -52,7 +52,7 @@ function PublicBookingPage() {
         if (!c.data) throw new Error("Página de agendamento não encontrada.");
         const s = await supabase.from("services").select("id,name,price,estimated_duration").eq("company_id", c.data.id).eq("active", true).order("name");
         if (s.error) throw s.error;
-        setCompany(c.data as Company); setThemeBrand({...DEFAULT_BRAND,...(c.data?.brand_colors??{})}); setServices((s.data ?? []) as Service[]);
+        setCompany(c.data as Company); setThemeBrand({ ...DEFAULT_BRAND, ...((c.data.brand_colors as Partial<BrandColors> | null) ?? {}) }); setServices((s.data ?? []) as Service[]);
       } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a página."); }
       finally { setLoading(false); }
     })();
