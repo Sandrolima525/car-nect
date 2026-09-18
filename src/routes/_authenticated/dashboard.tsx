@@ -196,7 +196,7 @@ function DashboardPage() {
 
     const { error: updateError } = await supabase
       .from("appointments")
-      .update({ status: next, updated_at: new Date().toISOString() })
+      .update({ status: next, updated_at: new Date().toISOString(), ...(next === "confirmed" ? { washing_at: new Date().toISOString() } : {}), ...(next === "completed" ? { ready_at: new Date().toISOString() } : {}) })
       .eq("id", appointment.id);
 
     if (updateError) setError(updateError.message);
