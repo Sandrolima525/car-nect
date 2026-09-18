@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, Clock3, DollarSign, MessageCircle, Plus, Trash2, Users } from "lucide-react";
+import { Activity, CarFront, CheckCircle2, Clock3, Droplets, Gauge, ListOrdered, Plus, Sparkles, Timer, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,144 +8,429 @@ import { getCurrentCompanyId } from "@/services/company";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({ component: DashboardPage });
 
-type Service = { id: string; name: string; price: number; estimated_duration: number | null };
-type Appointment = {
-  id: string; customer_name: string; customer_phone: string | null; appointment_date: string;
-  appointment_time: string; status: string; services: Service[]; totalPrice: number; totalDuration: number;
+type Service = {
+  id: string;
+  name: string;
+  price: number;
+  estimated_duration: number | null;
+  category: string | null;
 };
+
+type Appointment = {
+  id: string;
+  customer_name: string;
+  customer_phone: string | null;
+  appointment_date: string;
+  appointment_time: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  services: Service[];
+  totalPrice: number;
+  totalDuration: number;
+};
+
+const MAX_CAPACITY = 6;
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const today = () => new Date().toLocaleDateString("en-CA");
-const shiftDate = (base: string, days: number) => { const d = new Date(base + "T12:00:00"); d.setDate(d.getDate() + days); return d.toLocaleDateString("en-CA"); };
-const startOfWeek = (base: string) => { const d = new Date(base + "T12:00:00"); const day = d.getDay(); d.setDate(d.getDate() - (day === 0 ? 6 : day - 1)); return d.toLocaleDateString("en-CA"); };
-const endOfWeek = (base: string) => shiftDate(startOfWeek(base), 6);
-const startOfMonth = (base: string) => base.slice(0, 8) + "01";
-const endOfMonth = (base: string) => { const d = new Date(base.slice(0, 8) + "01T12:00:00"); d.setMonth(d.getMonth() + 1, 0); return d.toLocaleDateString("en-CA"); };
+
+function categoryName(service: Service) {
+  const raw = (service.category || service.name || "").toLowerCase();
+  if (raw.includes("higien")) return "Higienização interna";
+  if (raw.includes("poliment")) return "Polimento";
+  if (raw.includes("detalh") || raw.includes("detail")) return "Detalhamento";
+  if (raw.includes("complet")) return "Lavagem completa";
+  return "Lavagem simples";
+}
+
+function statusLabel(status: string) {
+  if (status === "pending") return "Na fila";
+  if (status === "confirmed") return "Em lavagem";
+  if (status === "completed") return "Pronto";
+  return "Cancelado";
+}
+
+function statusClass(status: string) {
+  if (status === "pending") return "bg-amber-500/10 text-amber-700 dark:text-amber-300";
+  if (status === "confirmed") return "bg-blue-500/10 text-blue-700 dark:text-blue-300";
+  if (status === "completed") return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+  return "bg-muted text-muted-foreground";
+}
 
 function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(today());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [periodAppointments, setPeriodAppointments] = useState<Appointment[]>([]);
-  const [upcoming, setUpcoming] = useState<Appointment[]>([]);
-  const [periodView, setPeriodView] = useState<"week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [companyName, setCompanyName] = useState("Empresa");
-  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
-
-  const period = useMemo(() => ({ weekStart: startOfWeek(selectedDate), weekEnd: endOfWeek(selectedDate), monthStart: startOfMonth(selectedDate), monthEnd: endOfMonth(selectedDate) }), [selectedDate]);
+  const [companyName, setCompanyName] = useState("LavaPro");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const enrich = async (rows: any[]) => {
     if (!rows.length) return [] as Appointment[];
-    const ids = rows.map(r => r.id);
-    const { data: links, error: linksError } = await (supabase as any).from("appointment_services").select("appointment_id,service_id,price,duration_minutes").in("appointment_id", ids);
+
+    const ids = rows.map((r) => r.id);
+    const { data: links, error: linksError } = await (supabase as any)
+      .from("appointment_services")
+      .select("appointment_id,service_id,price,duration_minutes")
+      .in("appointment_id", ids);
     if (linksError) throw linksError;
-    const serviceIds: string[] = Array.from(new Set<string>((links ?? []).map((x: { service_id: string }) => x.service_id)));
-    const { data: services, error: servicesError } = serviceIds.length ? await supabase.from("services").select("id,name,price,estimated_duration").in("id", serviceIds) : { data: [], error: null };
+
+    const serviceIds = Array.from(new Set<string>((links ?? []).map((x: { service_id: string }) => x.service_id)));
+    const { data: services, error: servicesError } = serviceIds.length
+      ? await supabase.from("services").select("id,name,price,estimated_duration,category").in("id", serviceIds)
+      : { data: [], error: null };
     if (servicesError) throw servicesError;
-    const serviceMap = new Map((services ?? []).map(s => [s.id, s as Service]));
+
+    const serviceMap = new Map((services ?? []).map((s) => [s.id, s as Service]));
     const linkMap = new Map<string, any[]>();
-    for (const link of links ?? []) linkMap.set(link.appointment_id, [...(linkMap.get(link.appointment_id) ?? []), link]);
-    return rows.map(row => {
+
+    for (const link of links ?? []) {
+      linkMap.set(link.appointment_id, [...(linkMap.get(link.appointment_id) ?? []), link]);
+    }
+
+    return rows.map((row) => {
       const linked = linkMap.get(row.id) ?? [];
       const fallback = row.service as Service | null;
-      const rowServices = linked.map(x => serviceMap.get(x.service_id)).filter(Boolean) as Service[];
-      return { ...row, services: rowServices.length ? rowServices : fallback ? [fallback] : [], totalPrice: linked.length ? linked.reduce((s,x)=>s+Number(x.price),0) : Number(fallback?.price ?? 0), totalDuration: linked.length ? linked.reduce((s,x)=>s+Number(x.duration_minutes ?? 60),0) : Number(fallback?.estimated_duration ?? 60) };
+      const rowServices = linked.map((x) => serviceMap.get(x.service_id)).filter(Boolean) as Service[];
+
+      return {
+        ...row,
+        services: rowServices.length ? rowServices : fallback ? [fallback] : [],
+        totalPrice: linked.length ? linked.reduce((sum, x) => sum + Number(x.price), 0) : Number(fallback?.price ?? 0),
+        totalDuration: linked.length
+          ? linked.reduce((sum, x) => sum + Number(x.duration_minutes ?? 60), 0)
+          : Number(fallback?.estimated_duration ?? 60),
+      };
     });
   };
 
   const load = async () => {
     try {
-      setLoading(true); setError("");
+      setLoading(true);
+      setError("");
+
       const companyId = await getCurrentCompanyId();
-      const company = await supabase.from("companies").select("name,logo_url").eq("id", companyId).maybeSingle();
+      const company = await supabase.from("companies").select("name").eq("id", companyId).maybeSingle();
       if (!company.error && company.data?.name) setCompanyName(company.data.name);
-      if (!company.error) setCompanyLogo(company.data?.logo_url ?? null);
-      const baseSelect = "id,customer_name,customer_phone,appointment_date,appointment_time,status,service:services(id,name,price,estimated_duration)";
-      const [day, periodRows, futureRows] = await Promise.all([
-        supabase.from("appointments").select(baseSelect).eq("company_id", companyId).eq("appointment_date", selectedDate).order("appointment_time"),
-        supabase.from("appointments").select(baseSelect).eq("company_id", companyId).gte("appointment_date", period.weekStart).lte("appointment_date", period.monthEnd).order("appointment_date").order("appointment_time"),
-        supabase.from("appointments").select(baseSelect).eq("company_id", companyId).gt("appointment_date", today()).neq("status","cancelled").order("appointment_date").order("appointment_time").limit(6),
-      ]);
-      if (day.error) throw day.error; if (periodRows.error) throw periodRows.error; if (futureRows.error) throw futureRows.error;
-      const [dayData, periodData, futureData] = await Promise.all([enrich(day.data ?? []), enrich(periodRows.data ?? []), enrich(futureRows.data ?? [])]);
-      setAppointments(dayData); setPeriodAppointments(periodData); setUpcoming(futureData);
-    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar o dashboard."); }
-    finally { setLoading(false); }
+
+      const { data, error: appointmentsError } = await supabase
+        .from("appointments")
+        .select("id,customer_name,customer_phone,appointment_date,appointment_time,status,created_at,updated_at,service:services(id,name,price,estimated_duration,category)")
+        .eq("company_id", companyId)
+        .eq("appointment_date", selectedDate)
+        .neq("status", "cancelled")
+        .order("appointment_time");
+
+      if (appointmentsError) throw appointmentsError;
+
+      setAppointments(await enrich(data ?? []));
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível carregar a operação.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { void load(); }, [selectedDate, period.weekStart, period.monthEnd]);
+  useEffect(() => {
+    void load();
+    const interval = window.setInterval(() => void load(), 15000);
+    return () => window.clearInterval(interval);
+  }, [selectedDate]);
 
-  const customers = new Set(appointments.map(a => a.customer_name.trim().toLowerCase())).size;
-  const revenue = appointments.filter(a => a.status === "completed").reduce((s,a) => s + a.totalPrice, 0);
-  const weekAppointments = periodAppointments.filter(a => a.appointment_date >= period.weekStart && a.appointment_date <= period.weekEnd);
-  const monthAppointments = periodAppointments.filter(a => a.appointment_date >= period.monthStart && a.appointment_date <= period.monthEnd);
-  const weekRevenue = weekAppointments.filter(a => a.status === "completed").reduce((s,a) => s+a.totalPrice,0);
-  const monthRevenue = monthAppointments.filter(a => a.status === "completed").reduce((s,a) => s+a.totalPrice,0);
-  const selectedPeriod = periodView === "week" ? weekAppointments : periodView === "month" ? monthAppointments : [];
-  const selectedPeriodRevenue = periodView === "week" ? weekRevenue : monthRevenue;
-  const selectedPeriodLabel = periodView === "week" ? "Esta semana" : "Este mês";
+  const queue = appointments.filter((a) => a.status === "pending");
+  const washing = appointments.filter((a) => a.status === "confirmed");
+  const ready = appointments.filter((a) => a.status === "completed");
+  const patio = [...queue, ...washing, ...ready];
 
-  const shareReadyOnWhatsApp = (a: Appointment) => {
-    const raw = (a.customer_phone ?? "").replace(/\D/g,"");
-    const phone = raw.startsWith("55") ? raw : "55" + raw;
-    if (raw.length < 8) return setError("Este cliente não possui um WhatsApp cadastrado.");
-    const message = encodeURIComponent(`Olá, ${a.customer_name}! 🚗✨ Seu veículo está pronto e o serviço foi concluído. Pode passar para fazer a retirada. Obrigado por escolher a ${companyName}!`);
-    window.open(`https://wa.me/${phone}?text=${message}`,"_blank","noopener,noreferrer");
+  const capacity = Math.min(100, Math.round((patio.length / MAX_CAPACITY) * 100));
+
+  const averageService = useMemo(() => {
+    if (!appointments.length) return 0;
+    return Math.round(appointments.reduce((sum, a) => sum + a.totalDuration, 0) / appointments.length);
+  }, [appointments]);
+
+  const averageWait = useMemo(() => {
+    const now = Date.now();
+    const active = [...queue, ...washing];
+    if (!active.length) return 0;
+
+    const minutes = active.map((a) => {
+      const scheduled = new Date(a.appointment_date + "T" + a.appointment_time).getTime();
+      return Math.max(0, Math.round((now - scheduled) / 60000));
+    });
+
+    return Math.round(minutes.reduce((sum, value) => sum + value, 0) / minutes.length);
+  }, [queue, washing, lastUpdated]);
+
+  const categories = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const appointment of appointments) {
+      const seen = new Set<string>();
+      for (const service of appointment.services) {
+        const category = categoryName(service);
+        if (!seen.has(category)) {
+          map.set(category, (map.get(category) ?? 0) + 1);
+          seen.add(category);
+        }
+      }
+    }
+    const total = Array.from(map.values()).reduce((sum, value) => sum + value, 0);
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count, percent: total ? Math.round((count / total) * 100) : 0 }))
+      .sort((a, b) => b.count - a.count);
+  }, [appointments]);
+
+  const displayDate = new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  });
+
+  const advanceStatus = async (appointment: Appointment) => {
+    const next = appointment.status === "pending" ? "confirmed" : appointment.status === "confirmed" ? "completed" : null;
+    if (!next) return;
+
+    const { error: updateError } = await supabase
+      .from("appointments")
+      .update({ status: next, updated_at: new Date().toISOString() })
+      .eq("id", appointment.id);
+
+    if (updateError) setError(updateError.message);
+    else void load();
   };
 
-  const deleteCompleted = async (a: Appointment) => {
-    if (a.status !== "completed" || !window.confirm(`Excluir o agendamento concluído de ${a.customer_name}?`)) return;
-    const { error: deleteError } = await supabase.from("appointments").delete().eq("id",a.id);
-    if (deleteError) setError(deleteError.message); else { setAppointments(current => current.filter(x=>x.id!==a.id)); setPeriodAppointments(current => current.filter(x=>x.id!==a.id)); }
-  };
-
-  const displayDate = new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
-
-  return <div className="mx-auto max-w-6xl space-y-6 pb-10">
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/80 p-3 shadow-sm backdrop-blur sm:p-4">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.06] shadow-lg shadow-primary/10 ring-4 ring-primary/[0.05] sm:h-16 sm:w-16">
-          {companyLogo ? <img src={companyLogo} alt={"Logo " + companyName} className="h-full w-full object-cover" /> : <span className="text-sm font-bold text-primary">{companyName.slice(0, 2).toUpperCase()}</span>}
+  return (
+    <div className="mx-auto max-w-7xl space-y-5 pb-10">
+      <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+            <Activity className="h-4 w-4" />
+            Operação & Pátio
+          </div>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{companyName}</h1>
+          <p className="text-sm capitalize text-muted-foreground">{displayDate} · atualização automática a cada 15s</p>
         </div>
-        <div className="min-w-0"><p className="truncate text-xs font-semibold uppercase tracking-wider text-primary">{companyName}</p><h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Olá 👋</h2><p className="text-sm text-muted-foreground capitalize">{displayDate}</p></div>
+
+        <div className="flex items-center gap-2">
+          <input
+            aria-label="Escolher data"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="h-10 rounded-xl border border-border bg-background px-3 text-sm font-medium outline-none focus:border-primary"
+          />
+          <Button asChild className="rounded-xl">
+            <Link to="/agenda">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo
+            </Link>
+          </Button>
+        </div>
       </div>
-      <Button asChild size="icon" className="h-11 w-11 rounded-xl shadow-lg shadow-primary/15" title="Novo agendamento"><Link to="/agenda"><Plus className="h-5 w-5"/></Link></Button>
+
+      {error && <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold">Pátio agora</h2>
+            <p className="text-sm text-muted-foreground">Visão operacional dos veículos do dia</p>
+          </div>
+          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+            {patio.length}/{MAX_CAPACITY} veículos
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <OperationalCard icon={ListOrdered} label="Fila de espera" value={queue.length} helper="aguardando início" className="border-amber-500/20" />
+          <OperationalCard icon={Droplets} label="Em lavagem" value={washing.length} helper="serviço em andamento" className="border-blue-500/20" />
+          <OperationalCard icon={CheckCircle2} label="Prontos para retirada" value={ready.length} helper="aguardando cliente" className="border-emerald-500/20" />
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <Card className="rounded-2xl border-border/60 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold">Capacidade de atendimento</h3>
+                <p className="text-xs text-muted-foreground">Ocupação operacional do pátio</p>
+              </div>
+              <Gauge className="h-5 w-5 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end justify-between">
+              <span className="text-4xl font-black tracking-tight">{loading ? "—" : capacity}%</span>
+              <span className="text-sm text-muted-foreground">{patio.length} de {MAX_CAPACITY} vagas operacionais</span>
+            </div>
+            <div className="mt-4 h-3 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: capacity + "%" }} />
+            </div>
+            <div className="mt-3 flex justify-between text-xs text-muted-foreground">
+              <span>0%</span>
+              <span>50%</span>
+              <span>100%</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Metric icon={Timer} label="Espera média atual" value={loading ? "—" : averageWait + " min"} helper="atraso médio dos veículos ativos" />
+          <Metric icon={Clock3} label="Tempo médio de serviço" value={loading ? "—" : averageService + " min"} helper="duração prevista dos serviços" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.35fr]">
+        <Card className="rounded-2xl border-border/60 shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold">Serviços por categoria</h3>
+                <p className="text-xs text-muted-foreground">Distribuição da operação</p>
+              </div>
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Carregando...</p>
+            ) : categories.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum serviço registrado neste dia.</p>
+            ) : (
+              categories.map((item) => (
+                <div key={item.name}>
+                  <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                    <span className="font-medium">{item.name}</span>
+                    <span className="text-xs text-muted-foreground">{item.count} · {item.percent}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary/70" style={{ width: item.percent + "%" }} />
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border-border/60 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold">Fluxo do pátio</h3>
+                <p className="text-xs text-muted-foreground">Acompanhe e avance cada veículo</p>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/agenda">Abrir agenda</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-5 text-sm text-muted-foreground">Carregando operação...</div>
+            ) : patio.length === 0 ? (
+              <div className="p-8 text-center">
+                <CarFront className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+                <p className="text-sm font-medium">Pátio vazio</p>
+                <p className="mt-1 text-xs text-muted-foreground">Nenhum veículo em operação neste dia.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border/60">
+                {patio.map((appointment) => (
+                  <div key={appointment.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="w-14 shrink-0 rounded-xl bg-muted px-2 py-2 text-center text-sm font-bold">
+                        {appointment.appointment_time.slice(0, 5)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{appointment.customer_name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {appointment.services.map((service) => service.name).join(" + ") || "Serviço"}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">{appointment.totalDuration} min previstos</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className={"rounded-full px-3 py-1 text-xs font-semibold " + statusClass(appointment.status)}>
+                        {statusLabel(appointment.status)}
+                      </span>
+                      {appointment.status !== "completed" && (
+                        <Button size="sm" variant="outline" onClick={() => void advanceStatus(appointment)}>
+                          {appointment.status === "pending" ? "Iniciar lavagem" : "Marcar como pronto"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Operação acompanhada em tempo real</span>
+        <span>{lastUpdated ? "Atualizado às " + lastUpdated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "Atualizando..."}</span>
+      </div>
     </div>
+  );
+}
 
-    {error && <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-
-    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-      <Metric icon={CalendarDays} label="Hoje" value={loading?"—":String(appointments.length)} compact />
-      <Metric icon={DollarSign} label="Concluído" value={loading?"—":money(revenue)} compact />
-    </div>
-
-    <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
-      <CardContent className="p-3 sm:p-4">
-        <div className="flex items-center justify-between gap-2">
-          <Button variant="outline" size="sm" onClick={()=>setSelectedDate(today())}>Hoje</Button>
-          <Button variant="ghost" size="sm" onClick={()=>setSelectedDate(shiftDate(selectedDate,-1))}>‹</Button>
-          <input aria-label="Escolher data" type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-primary/15 bg-primary/[0.035] px-2 text-center text-sm font-semibold shadow-inner outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"/>
-          <Button variant="ghost" size="sm" onClick={()=>setSelectedDate(shiftDate(selectedDate,1))}>›</Button>
-          <Button variant="outline" size="sm" onClick={()=>setSelectedDate(shiftDate(today(),1))}>Amanhã</Button>
+function OperationalCard({
+  icon: Icon,
+  label,
+  value,
+  helper,
+  className = "",
+}: {
+  icon: typeof ListOrdered;
+  label: string;
+  value: number;
+  helper: string;
+  className?: string;
+}) {
+  return (
+    <Card className={"rounded-2xl border-2 shadow-sm " + className}>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">{label}</p>
+            <p className="mt-1 text-4xl font-black tracking-tight">{value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
+          </div>
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Icon className="h-5 w-5" />
+          </div>
         </div>
       </CardContent>
     </Card>
-
-    <div className="grid grid-cols-2 gap-3">
-      <button type="button" onClick={()=>setPeriodView(periodView==="week"?null:"week")} className="text-left">
-        <Card className={`rounded-2xl border-border/60 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${periodView==="week"?"border-primary ring-1 ring-primary/20":""}`}><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Semana</span><span className="text-xs text-primary">{periodView==="week"?"Fechar":"Ver"}</span></div><p className="mt-2 text-xl font-bold">{loading?"—":weekAppointments.length}</p><p className="text-xs text-muted-foreground">agendamentos · {money(weekRevenue)}</p></CardContent></Card>
-      </button>
-      <button type="button" onClick={()=>setPeriodView(periodView==="month"?null:"month")} className="text-left">
-        <Card className={`rounded-2xl border-border/60 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${periodView==="month"?"border-primary ring-1 ring-primary/20":""}`}><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Mês</span><span className="text-xs text-primary">{periodView==="month"?"Fechar":"Ver"}</span></div><p className="mt-2 text-xl font-bold">{loading?"—":monthAppointments.length}</p><p className="text-xs text-muted-foreground">agendamentos · {money(monthRevenue)}</p></CardContent></Card>
-      </button>
-    </div>
-
-    {periodView && <Card className="rounded-2xl border-border/60 shadow-sm"><CardHeader className="pb-3"><div className="flex items-center justify-between"><div><h3 className="font-semibold">{selectedPeriodLabel}</h3><p className="text-xs text-muted-foreground">{selectedPeriod.length} agendamentos · {money(selectedPeriodRevenue)} concluído</p></div><Button variant="ghost" size="sm" onClick={()=>setPeriodView(null)}>Fechar</Button></div></CardHeader><CardContent className="p-0"><div className="divide-y">{selectedPeriod.length===0?<p className="p-5 text-sm text-muted-foreground">Nenhum agendamento neste período.</p>:selectedPeriod.slice(0,12).map(a=><div key={a.id} className="flex items-center justify-between gap-3 p-4"><div className="min-w-0"><p className="text-xs text-muted-foreground">{new Date(a.appointment_date+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} · {a.appointment_time.slice(0,5)}</p><p className="truncate font-medium">{a.customer_name}</p><p className="truncate text-xs text-muted-foreground">{a.services.map(s=>s.name).join(" + ")}</p></div><span className="shrink-0 text-sm font-semibold">{money(a.totalPrice)}</span></div>)}</div></CardContent></Card>}
-
-    <Card className="rounded-2xl border-border/60 shadow-sm"><CardHeader className="pb-3"><div className="flex items-center justify-between"><div><h3 className="font-semibold">{selectedDate===today()?"Agenda de hoje":"Agenda do dia"}</h3><p className="text-xs text-muted-foreground">{appointments.length ? `${appointments.length} agendamento${appointments.length===1?"":"s"}` : "Nenhum agendamento"}</p></div><Button variant="ghost" size="sm" asChild><Link to="/agenda">Ver tudo</Link></Button></div></CardHeader><CardContent className="p-0">{loading?<div className="p-5 text-sm text-muted-foreground">Carregando...</div>:appointments.length===0?<div className="p-8 text-center"><CalendarDays className="mx-auto mb-2 h-8 w-8 text-muted-foreground"/><p className="text-sm text-muted-foreground">Nada agendado para este dia.</p><Button variant="outline" size="sm" className="mt-3" asChild><Link to="/agenda">Criar agendamento</Link></Button></div>:<div className="divide-y">{appointments.map(a=><div key={a.id} className="p-4"><div className="flex items-center gap-3"><span className="w-14 shrink-0 rounded-xl bg-muted px-2 py-2 text-center text-sm font-bold">{a.appointment_time.slice(0,5)}</span><div className="min-w-0 flex-1"><p className="truncate font-medium">{a.customer_name}</p><p className="truncate text-xs text-muted-foreground">{a.services.map(s=>s.name).join(" + ")||"Serviço"}</p></div><span className={`rounded-full px-2 py-1 text-[11px] ${a.status==="completed"?"bg-green-100 text-green-700":a.status==="cancelled"?"bg-red-100 text-red-700":a.status==="confirmed"?"bg-primary/10 text-primary":"bg-muted text-muted-foreground"}`}>{a.status==="completed"?"Concluído":a.status==="cancelled"?"Cancelado":a.status==="confirmed"?"Confirmado":"Pendente"}</span></div><div className="mt-3 flex items-center justify-between pl-[68px]"><span className="text-sm font-semibold">{money(a.totalPrice)}</span>{a.status==="completed"&&<div className="flex gap-1"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={()=>shareReadyOnWhatsApp(a)}><MessageCircle className="h-4 w-4"/></Button><Button variant="ghost" size="icon" className="h-8 w-8" onClick={()=>void deleteCompleted(a)}><Trash2 className="h-4 w-4"/></Button></div>}</div></div>)}</div>}</CardContent></Card>
-
-    <Card className="rounded-2xl"><CardHeader className="pb-3"><div className="flex items-center justify-between"><div><h3 className="font-semibold">Próximos</h3><p className="text-xs text-muted-foreground">Seus próximos clientes</p></div><Button variant="ghost" size="sm" asChild><Link to="/agenda">Ver tudo</Link></Button></div></CardHeader><CardContent className="p-0">{upcoming.length===0?<p className="p-5 text-sm text-muted-foreground">Nenhum agendamento futuro.</p>:<div className="divide-y">{upcoming.map(a=><div key={a.id} className="flex items-center gap-3 p-4"><div className="w-14 shrink-0 rounded-xl bg-primary/10 px-2 py-2 text-center"><p className="text-[11px] font-semibold text-primary">{new Date(a.appointment_date+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}</p><p className="text-sm font-bold">{a.appointment_time.slice(0,5)}</p></div><div className="min-w-0 flex-1"><p className="truncate font-medium">{a.customer_name}</p><p className="truncate text-xs text-muted-foreground">{a.services.map(s=>s.name).join(" + ")}</p></div><span className="shrink-0 text-sm font-semibold">{money(a.totalPrice)}</span></div>)}</div>}</CardContent></Card>
-  </div>;
+  );
 }
-function Metric({icon:Icon,label,value,compact=false}:{icon:typeof CalendarDays;label:string;value:string;compact?:boolean}){return <Card className="rounded-2xl"><CardContent className={compact?"p-4":"p-5"}><div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-4 w-4"/></div><div className="min-w-0"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-0.5 truncate text-xl font-bold">{value}</p></div></div></CardContent></Card>}
+
+function Metric({
+  icon: Icon,
+  label,
+  value,
+  helper,
+}: {
+  icon: typeof Timer;
+  label: string;
+  value: string;
+  helper: string;
+}) {
+  return (
+    <Card className="rounded-2xl border-border/60 shadow-sm">
+      <CardContent className="p-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
+        </div>
+        <p className="mt-4 text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="mt-1 text-2xl font-black">{value}</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{helper}</p>
+      </CardContent>
+    </Card>
+  );
+}
