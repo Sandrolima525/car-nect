@@ -113,13 +113,13 @@ function DashboardPage() {
       setError("Este cliente não possui um WhatsApp cadastrado.");
       return;
     }
-    const message = encodeURIComponent(\`Olá, \${a.customer_name}! 🚗✨ Seu veículo está pronto e o serviço foi concluído. Pode passar para fazer a retirada. Obrigado por escolher a LavaPro!\`);
-    window.open(\`https://wa.me/55\${phone}?text=\${message}\`, "_blank", "noopener,noreferrer");
+    const message = encodeURIComponent(`Olá, ${a.customer_name}! 🚗✨ Seu veículo está pronto e o serviço foi concluído. Pode passar para fazer a retirada. Obrigado por escolher a LavaPro!`);
+    window.open(`https://wa.me/55${phone}?text=${message}`, "_blank", "noopener,noreferrer");
   };
 
   const deleteCompleted = async (a: Appointment) => {
     if (a.status !== "completed") return;
-    const confirmed = window.confirm(\`Excluir o agendamento concluído de \${a.customer_name}? Essa ação remove o registro da agenda.\`);
+    const confirmed = window.confirm(`Excluir o agendamento concluído de ${a.customer_name}? Essa ação remove o registro da agenda.`);
     if (!confirmed) return;
     try {
       setError("");
@@ -153,14 +153,14 @@ function DashboardPage() {
       {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Metric icon={CalendarDays} label={\`Agendamentos · \${selectedDate === today() ? "hoje" : "dia"}\`} value={loading ? "—" : String(appointments.length)} />
+        <Metric icon={CalendarDays} label={`Agendamentos · ${selectedDate === today() ? "hoje" : "dia"}`} value={loading ? "—" : String(appointments.length)} />
         <Metric icon={Users} label="Clientes no dia" value={loading ? "—" : String(customers)} />
         <Metric icon={DollarSign} label="Faturamento do dia" value={loading ? "—" : money(revenue)} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <PeriodCard label="Esta semana" value={loading ? "—" : \`\${weekAppointments.length} agendamentos\`} detail={loading ? "" : money(weekRevenue)} onClick={() => setSelectedDate(period.weekStart)} />
-        <PeriodCard label="Este mês" value={loading ? "—" : \`\${monthAppointments.length} agendamentos\`} detail={loading ? "" : money(monthRevenue)} onClick={() => setSelectedDate(period.monthStart)} />
+        <PeriodCard label="Esta semana" value={loading ? "—" : `${weekAppointments.length} agendamentos`} detail={loading ? "" : money(weekRevenue)} onClick={() => setSelectedDate(period.weekStart)} />
+        <PeriodCard label="Este mês" value={loading ? "—" : `${monthAppointments.length} agendamentos`} detail={loading ? "" : money(monthRevenue)} onClick={() => setSelectedDate(period.monthStart)} />
       </div>
 
       <Card>
@@ -180,7 +180,7 @@ function DashboardPage() {
                   <div className="min-w-0"><p className="truncate font-medium">{a.customer_name}</p><p className="text-xs text-muted-foreground">{a.service?.name ?? "Serviço"} · {a.service?.estimated_duration ?? 60} min</p></div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={\`rounded-full px-2.5 py-1 text-xs \${a.status === "completed" ? "bg-green-100 text-green-700" : a.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}\`}>{a.status === "completed" ? "Concluído" : a.status === "cancelled" ? "Cancelado" : "Agendado"}</span>
+                  <span className={`rounded-full px-2.5 py-1 text-xs ${a.status === "completed" ? "bg-green-100 text-green-700" : a.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`}>{a.status === "completed" ? "Concluído" : a.status === "cancelled" ? "Cancelado" : "Agendado"}</span>
                   <span className="hidden font-semibold sm:block">{money(Number(a.service?.price ?? 0))}</span>
                   {a.status === "completed" && (
                     <>
