@@ -60,6 +60,7 @@ function AgendaPage() {
   const [customerFound, setCustomerFound] = useState(false);
   const [customerHistory, setCustomerHistory] = useState<CustomerHistory[]>([]);
   const [publicSlug, setPublicSlug] = useState("");
+  const [companyName, setCompanyName] = useState("Empresa");
 
   const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
   const totalDuration = selectedServices.reduce((sum, s) => sum + (s.estimated_duration ?? 60), 0);
