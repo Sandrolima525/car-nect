@@ -42,7 +42,7 @@ function AgendaPage() {
   const [plate, setPlate] = useState("");
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
-  const [serviceId, setServiceId] = useState("");
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -52,7 +52,9 @@ function AgendaPage() {
   const [customerFound, setCustomerFound] = useState(false);
   const [publicSlug, setPublicSlug] = useState("");
 
-  const selectedService = useMemo(() => services.find(s => s.id === serviceId), [services, serviceId]);
+  const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
+  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.estimated_duration ?? 60), 0);
+  const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price), 0);
 
   const load = async () => {
     try {
@@ -96,21 +98,21 @@ function AgendaPage() {
 
   useEffect(() => { void load(); }, [date]);
 
-  const loadSlots = async (service = serviceId, selectedDate = date) => {
+  const loadSlots = async (selectedIds = serviceIds, selectedDate = date) => {
     setSlots([]); setTime("");
-    if (!companyId || !service || !selectedDate) { return; }
+    if (!companyId || !selectedIds.length || !selectedDate) { return; }
     const company = await supabase.from("companies").select("public_booking_slug").eq("id", companyId).single();
     if (company.error || !company.data?.public_booking_slug) { setError(company.error?.message || "Link público da empresa não configurado."); return; }
-    const result = await (supabase as any).rpc("get_public_available_slots", { _slug: company.data.public_booking_slug, _date: selectedDate, _service_id: service });
+    const result = await (supabase as any).rpc("get_public_available_slots_multi", { _slug: company.data.public_booking_slug, _date: selectedDate, _service_ids: selectedIds });
     if (result.error) { setError(result.error.message); setSlots([]); return; }
     setSlots((result.data ?? []).map((row: { slot: string }) => row.slot.slice(0, 5)));
   };
 
-  useEffect(() => { if (showForm) void loadSlots(); }, [serviceId, date, showForm]);
+  useEffect(() => { if (showForm) void loadSlots(); }, [serviceIds, date, showForm]);
 
   const openNew = () => {
     setShowForm(true); setPhone(""); setName(""); setVehicles([]); setVehicleId("none"); setPlate(""); setBrand(""); setModel("");
-    setServiceId(services[0]?.id ?? ""); setTime(""); setNotes(""); setCustomerFound(false); setError("");
+    setServiceIds(services[0]?.id ? [services[0].id] : []); setTime(""); setNotes(""); setCustomerFound(false); setError("");
   };
 
   const findCustomer = async () => {
@@ -128,7 +130,7 @@ function AgendaPage() {
       }
     }
     const last = await supabase.from("appointments").select("service_id").eq("company_id", companyId).eq("customer_id", customer.id).order("appointment_date", { ascending: false }).order("appointment_time", { ascending: false }).limit(1).maybeSingle();
-    if (!last.error && last.data?.service_id) setServiceId(last.data.service_id);
+    if (!last.error && last.data?.service_id) setServiceIds([last.data.service_id]);
   };
 
   const chooseVehicle = (value: string) => {
@@ -139,7 +141,7 @@ function AgendaPage() {
   };
 
   const save = async () => {
-    if (!name.trim() || digits(phone).length < 8 || !serviceId || !date || !time) return setError("Preencha nome, WhatsApp, serviço, data e horário.");
+    if (!name.trim() || digits(phone).length < 8 || !serviceIds.length || !date || !time) return setError("Preencha nome, WhatsApp, serviço, data e horário.");
     try {
       setSaving(true); setError("");
       let customerId = customers.find(c => digits(c.phone ?? "") === digits(phone))?.id ?? null;
@@ -160,10 +162,10 @@ function AgendaPage() {
       }
 
       const r = await supabase.from("appointments").insert({
-        company_id: companyId, customer_id: customerId, vehicle_id: savedVehicleId, service_id: serviceId,
+        company_id: companyId, customer_id: customerId, vehicle_id: savedVehicleId, service_id: serviceIds[0],
         customer_name: name.trim(), customer_phone: phone.trim(), vehicle_plate: plate.trim().toUpperCase() || null,
         appointment_date: date, appointment_time: time, notes: notes.trim() || null, status: "pending",
-      });
+      }).select("id");
       if (r.error) {
         if (r.error.code === "23505") throw new Error("Esse horário acabou de ser ocupado. Escolha outro.");
         throw r.error;
@@ -213,11 +215,11 @@ function AgendaPage() {
           <div className="space-y-2"><Label>Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Civic" /></div>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2"><Label>Serviço *</Label><Select value={serviceId} onValueChange={value => { setServiceId(value); setTime(""); }}><SelectTrigger><SelectValue placeholder={services.length ? "Escolha o serviço" : "Nenhum serviço disponível"} /></SelectTrigger><SelectContent>{services.map(s => <SelectItem key={s.id} value={s.id}>{s.name} · {s.estimated_duration ?? 60} min · {money(Number(s.price))}</SelectItem>)}</SelectContent></Select>{servicesError && <p className="text-xs text-destructive">Erro ao carregar serviços: {servicesError}</p>}{!servicesError && services.length === 0 && <p className="text-xs text-muted-foreground">Cadastre um serviço em Serviços e ele aparecerá aqui.</p>}</div>
+          <div className="space-y-2"><Label>Serviços *</Label><div className="grid gap-2">{services.map(s => <label key={s.id} className="flex cursor-pointer items-center gap-3 rounded-lg border p-3"><input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => { setServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setTime(""); }} className="h-4 w-4" /><span className="flex-1 text-sm font-medium">{s.name}</span><span className="text-xs text-muted-foreground">{s.estimated_duration ?? 60} min · {money(Number(s.price))}</span></label>)}</div>{servicesError && <p className="text-xs text-destructive">Erro ao carregar serviços: {servicesError}</p>}{!servicesError && services.length === 0 && <p className="text-xs text-muted-foreground">Cadastre um serviço em Serviços e ele aparecerá aqui.</p>}</div>
           <div className="space-y-2"><Label>Data *</Label><Input type="date" min={today()} value={date} onChange={e => { setDate(e.target.value); setTime(""); }} /></div>
           <div className="space-y-2"><Label>Horário disponível *</Label><Select value={time} onValueChange={setTime}><SelectTrigger><SelectValue placeholder={slots.length ? "Escolha um horário" : "Selecione serviço"} /></SelectTrigger><SelectContent>{slots.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
         </div>
-        {selectedService && <div className="rounded-lg bg-muted/50 p-3 text-sm"><strong>{selectedService.name}</strong> · {selectedService.estimated_duration ?? 60} minutos · {money(Number(selectedService.price))}. Os horários acima já consideram os agendamentos existentes.</div>}
+        {selectedServices.length > 0 && <div className="rounded-lg bg-muted/50 p-3 text-sm"><strong>{selectedServices.map(s => s.name).join(" + ")}</strong><br />Tempo total: {totalDuration} minutos · Valor total: {money(totalPrice)}. Os horários acima já consideram todos os serviços selecionados.</div>}
         <div className="space-y-2"><Label>Observações</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opcional" /></div>
         <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button><Button onClick={() => void save()} disabled={saving || !time}>{saving ? "Salvando..." : "Salvar agendamento"}</Button></div>
       </CardContent>
