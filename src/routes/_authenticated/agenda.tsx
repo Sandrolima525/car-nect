@@ -10,7 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentCompanyId } from "@/services/company";
 
-export const Route = createFileRoute("/_authenticated/agenda")({\n  ssr: false,\n  component: AgendaPage,\n});
+export const Route = createFileRoute("/_authenticated/agenda")({
+  ssr: false,
+  component: AgendaPage,
+});
 
 type Service = { id: string; name: string; price: number; estimated_duration: number | null };
 type Customer = { id: string; name: string; phone: string | null };
