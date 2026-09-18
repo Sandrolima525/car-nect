@@ -29,6 +29,7 @@ const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", curr
 
 function AgendaPage() {
   const [companyId, setCompanyId] = useState("");
+  const [servicesError, setServicesError] = useState("");
   const [date, setDate] = useState(today());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -64,7 +65,8 @@ function AgendaPage() {
         (supabase as any).from("customers").select("id,name,phone").eq("company_id", id).order("name").limit(2000),
       ]);
       if (a.error) throw a.error;
-      if (s.error) throw s.error;
+      if (s.error) { setServicesError(s.error.message); throw s.error; }
+      setServicesError("");
       if (c.error) throw c.error;
 
       const appointmentRows = a.data ?? [];
@@ -95,9 +97,10 @@ function AgendaPage() {
   useEffect(() => { void load(); }, [date]);
 
   const loadSlots = async (service = serviceId, selectedDate = date) => {
-    if (!companyId || !service || !selectedDate) { setSlots([]); return; }
+    setSlots([]); setTime("");
+    if (!companyId || !service || !selectedDate) { return; }
     const company = await supabase.from("companies").select("public_booking_slug").eq("id", companyId).single();
-    if (company.error || !company.data?.public_booking_slug) return;
+    if (company.error || !company.data?.public_booking_slug) { setError(company.error?.message || "Link público da empresa não configurado."); return; }
     const result = await (supabase as any).rpc("get_public_available_slots", { _slug: company.data.public_booking_slug, _date: selectedDate, _service_id: service });
     if (result.error) { setError(result.error.message); setSlots([]); return; }
     setSlots((result.data ?? []).map((row: { slot: string }) => row.slot.slice(0, 5)));
@@ -210,7 +213,7 @@ function AgendaPage() {
           <div className="space-y-2"><Label>Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Civic" /></div>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2"><Label>Serviço *</Label><Select value={serviceId} onValueChange={setServiceId}><SelectTrigger><SelectValue placeholder="Escolha o serviço" /></SelectTrigger><SelectContent>{services.map(s => <SelectItem key={s.id} value={s.id}>{s.name} · {s.estimated_duration ?? 60} min · {money(Number(s.price))}</SelectItem>)}</SelectContent></Select></div>
+          <div className="space-y-2"><Label>Serviço *</Label><Select value={serviceId} onValueChange={value => { setServiceId(value); setTime(""); }}><SelectTrigger><SelectValue placeholder={services.length ? "Escolha o serviço" : "Nenhum serviço disponível"} /></SelectTrigger><SelectContent>{services.map(s => <SelectItem key={s.id} value={s.id}>{s.name} · {s.estimated_duration ?? 60} min · {money(Number(s.price))}</SelectItem>)}</SelectContent></Select>{servicesError && <p className="text-xs text-destructive">Erro ao carregar serviços: {servicesError}</p>}{!servicesError && services.length === 0 && <p className="text-xs text-muted-foreground">Cadastre um serviço em Serviços e ele aparecerá aqui.</p>}</div>
           <div className="space-y-2"><Label>Data *</Label><Input type="date" min={today()} value={date} onChange={e => { setDate(e.target.value); setTime(""); }} /></div>
           <div className="space-y-2"><Label>Horário disponível *</Label><Select value={time} onValueChange={setTime}><SelectTrigger><SelectValue placeholder={slots.length ? "Escolha um horário" : "Selecione serviço"} /></SelectTrigger><SelectContent>{slots.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
         </div>
