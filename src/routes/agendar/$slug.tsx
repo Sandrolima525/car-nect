@@ -68,7 +68,7 @@ function PublicBookingPage() {
     if (!company || !name.trim() || phone.replace(/\D/g, "").length < 8 || !serviceIds.length || !date || !time) return setError("Preencha nome, WhatsApp, serviço, data e horário.");
     try {
       setSaving(true); setError("");
-      const result = await (supabase as any).rpc("create_public_booking", {
+      const result = await (supabase as any).rpc("create_public_booking_multi", {
         _slug: slug, _name: name.trim(), _phone: phone.trim(), _service_ids: serviceIds, _date: date, _time: time,
         _vehicle_plate: plate.trim() || null, _vehicle_brand: brand.trim() || null, _vehicle_model: model.trim() || null, _notes: notes.trim() || null,
       });
