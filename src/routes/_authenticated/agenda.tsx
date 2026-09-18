@@ -1,326 +1,48 @@
-import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { CalendarDays, Car, Check, Clock3, Copy, ExternalLink, MessageCircle, Plus, Search, Trash2, UserRound, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { CarFront, Check, ChevronLeft, ChevronRight, Clock3, Droplets, Plus, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentCompanyId } from "@/services/company";
 
-export const Route = createFileRoute("/_authenticated/agenda")({
-  ssr: false,
-  component: AgendaPage,
-});
+export const Route = createFileRoute("/_authenticated/agenda")({ component: AgendaPage });
 
-type Service = { id: string; name: string; price: number; estimated_duration: number | null };
-type Customer = { id: string; name: string; phone: string | null };
-type Vehicle = { id: string; plate: string | null; brand: string | null; model: string | null };
-type CustomerHistory = { appointment_date: string; appointment_time: string; status: string; services: string; total: number };
-type Appointment = {
-  id: string; customer_id: string | null; customer_name: string; customer_phone: string;
-  appointment_date: string; appointment_time: string; status: string; notes: string | null;
-  vehicle_plate: string | null;
-  service: Service | null;
-  services: Service[];
-  vehicle: Vehicle | null;
-  totalPrice: number;
-  totalDuration: number;
-};
+type Appointment={id:string;customer_name:string;customer_phone:string;vehicle_plate:string|null;appointment_time:string;status:string;total_price:number;total_duration:number;services:{id:string;name:string}[]};
 
-const today = () => new Date().toLocaleDateString("en-CA");
-const digits = (value: string) => value.replace(/\D/g, "");
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const today=()=>new Date().toLocaleDateString("en-CA");
+const money=(n:number)=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const statuses=[
+ {key:"pending",label:"Aguardando",icon:Clock3},
+ {key:"confirmed",label:"Em lavagem",icon:Droplets},
+ {key:"completed",label:"Pronto",icon:Check},
+ {key:"delivered",label:"Concluído",icon:CarFront},
+] as const;
 
-function AgendaPage() {
-  const [companyId, setCompanyId] = useState("");
-  const [servicesError, setServicesError] = useState("");
-  const [date, setDate] = useState(today());
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [slots, setSlots] = useState<string[]>([]);
-  const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
-  const [vehicleId, setVehicleId] = useState("none");
-  const [plate, setPlate] = useState("");
-  const [brand, setBrand] = useState("");
-  const [model, setModel] = useState("");
-  const [serviceIds, setServiceIds] = useState<string[]>([]);
-  const [time, setTime] = useState("");
-  const [notes, setNotes] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [customerDetail, setCustomerDetail] = useState<Customer | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [customerFound, setCustomerFound] = useState(false);
-  const [customerHistory, setCustomerHistory] = useState<CustomerHistory[]>([]);
-  const [publicSlug, setPublicSlug] = useState("");
-  const [companyName, setCompanyName] = useState("Empresa");
-
-  const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
-  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.estimated_duration ?? 60), 0);
-  const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price), 0);
-
-  const load = async () => {
-    try {
-      setLoading(true); setError("");
-      const id = companyId || await getCurrentCompanyId();
-      setCompanyId(id);
-      const [a, s, c] = await Promise.all([
-        (supabase as any).from("appointments").select("id,customer_id,customer_name,customer_phone,appointment_date,appointment_time,status,notes,vehicle_id,vehicle_plate,service_id").eq("company_id", id).eq("appointment_date", date).order("appointment_time"),
-        (supabase as any).from("services").select("id,name,price,estimated_duration").eq("company_id", id).eq("active", true).order("name"),
-        (supabase as any).from("customers").select("id,name,phone").eq("company_id", id).order("name").limit(2000),
-      ]);
-      if (a.error) throw new Error("Não foi possível carregar os agendamentos: " + a.error.message);
-
-      const appointmentRows = a.data ?? [];
-      const serviceRows = (s.data ?? []) as Service[];
-      if (s.error) setServicesError(s.error.message); else setServicesError("");
-
-      let vehicleRows: Vehicle[] = [];
-      const vehicleIds = appointmentRows.map((row: any) => row.vehicle_id).filter(Boolean);
-      if (vehicleIds.length) {
-        const v = await (supabase as any).from("vehicles").select("id,plate,brand,model").in("id", vehicleIds);
-        if (!v.error) vehicleRows = (v.data ?? []) as Vehicle[];
-      }
-      const serviceMap = new Map(serviceRows.map(svc => [svc.id, svc]));
-      const appointmentIds = appointmentRows.map((row: any) => row.id);
-      const appointmentServiceMap = new Map<string, any[]>();
-      if (appointmentIds.length) {
-        const ars = await (supabase as any).from("appointment_services").select("appointment_id,service_id,price,duration_minutes").in("appointment_id", appointmentIds);
-        if (!ars.error) for (const item of ars.data ?? []) appointmentServiceMap.set(item.appointment_id, [...(appointmentServiceMap.get(item.appointment_id) ?? []), item]);
-      }
-      const vehicleMap = new Map(vehicleRows.map(v => [v.id, v]));
-      setAppointments(appointmentRows.map((row: any) => {
-        const linked = appointmentServiceMap.get(row.id) ?? [];
-        const rowServices = linked.map(item => serviceMap.get(item.service_id)).filter(Boolean) as Service[];
-        const fallback = serviceMap.get(row.service_id);
-        const finalServices = rowServices.length ? rowServices : (fallback ? [fallback] : []);
-        return {
-          ...row,
-          service: fallback ?? null,
-          services: finalServices,
-          vehicle: vehicleMap.get(row.vehicle_id) ?? null,
-          totalPrice: linked.length ? linked.reduce((sum, item) => sum + Number(item.price), 0) : Number(fallback?.price ?? 0),
-          totalDuration: linked.length ? linked.reduce((sum, item) => sum + Number(item.duration_minutes ?? 60), 0) : Number(fallback?.estimated_duration ?? 60),
-        };
-      }) as Appointment[]);
-
-      const company = await (supabase as any).from("companies").select("name,public_booking_slug").eq("id", id).single();
-      if (!company.error) { setPublicSlug(company.data?.public_booking_slug ?? ""); setCompanyName(company.data?.name ?? "Empresa"); }
-      setServices(serviceRows);
-      setCustomers(c.error ? [] : ((c.data ?? []) as Customer[]));
-    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a agenda."); }
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { void load(); }, [date]);
-
-  const loadSlots = async (selectedIds = serviceIds, selectedDate = date) => {
-    setSlots([]); setTime("");
-    if (!companyId || !selectedIds.length || !selectedDate) { return; }
-    const company = await supabase.from("companies").select("public_booking_slug").eq("id", companyId).single();
-    if (company.error || !company.data?.public_booking_slug) { setError(company.error?.message || "Link público da empresa não configurado."); return; }
-    const result = await (supabase as any).rpc("get_public_available_slots_multi", { _slug: company.data.public_booking_slug, _date: selectedDate, _service_ids: selectedIds });
-    if (result.error) { setError(result.error.message); setSlots([]); return; }
-    setSlots((result.data ?? []).map((row: { slot: string }) => row.slot.slice(0, 5)));
-  };
-
-  useEffect(() => { if (showForm) void loadSlots(); }, [serviceIds, date, showForm]);
-
-  const openNew = () => {
-    setEditingId(null);
-    setShowForm(true); setPhone(""); setName(""); setVehicles([]); setVehicleId("none"); setPlate(""); setBrand(""); setModel("");
-    setServiceIds(services[0]?.id ? [services[0].id] : []); setTime(""); setNotes(""); setCustomerFound(false); setCustomerHistory([]); setError("");
-  };
-
-  const findCustomer = async () => {
-    const phoneDigits = digits(phone);
-    if (phoneDigits.length < 8) { setCustomerFound(false); return; }
-    const customer = customers.find(c => digits(c.phone ?? "") === phoneDigits);
-    if (!customer) { setCustomerFound(false); setVehicles([]); setVehicleId("none"); return; }
-    setCustomerFound(true); setName(customer.name);
-    const v = await supabase.from("vehicles").select("id,plate,brand,model").eq("company_id", companyId).eq("customer_id", customer.id).order("created_at", { ascending: false });
-    if (!v.error) {
-      setVehicles((v.data ?? []) as Vehicle[]);
-      if (v.data?.[0]) {
-        setVehicleId(v.data[0].id);
-        setPlate(v.data[0].plate ?? ""); setBrand(v.data[0].brand ?? ""); setModel(v.data[0].model ?? "");
-      }
-    }
-    const history = await supabase.from("appointments").select("appointment_date,appointment_time,status,service_id").eq("company_id", companyId).eq("customer_id", customer.id).order("appointment_date",{ascending:false}).order("appointment_time",{ascending:false}).limit(6);
-    if (!history.error) {
-      const ids=[...new Set((history.data??[]).map((x:any)=>x.service_id).filter(Boolean))];
-      const hs=ids.length?await supabase.from("services").select("id,name,price").in("id",ids):{data:[],error:null};
-      const sm=new Map((hs.data??[]).map((x:any)=>[x.id,x]));
-      setCustomerHistory((history.data??[]).map((x:any)=>({appointment_date:x.appointment_date,appointment_time:x.appointment_time,status:x.status,services:sm.get(x.service_id)?.name??"Serviço",total:Number(sm.get(x.service_id)?.price??0)})));
-      if(history.data?.[0]?.service_id) setServiceIds([history.data[0].service_id]);
-    }
-  };
-
-  const chooseVehicle = (value: string) => {
-    setVehicleId(value);
-    const v = vehicles.find(item => item.id === value);
-    if (!v || value === "none") { setPlate(""); setBrand(""); setModel(""); return; }
-    setPlate(v.plate ?? ""); setBrand(v.brand ?? ""); setModel(v.model ?? "");
-  };
-
-  const openEdit = (a: Appointment) => {
-    setEditingId(a.id); setShowForm(true); setPhone(a.customer_phone); setName(a.customer_name);
-    setVehicleId(a.vehicle?.id ?? "none"); setPlate(a.vehicle?.plate ?? a.vehicle_plate ?? ""); setBrand(a.vehicle?.brand ?? ""); setModel(a.vehicle?.model ?? "");
-    setServiceIds(a.services.map(s=>s.id)); setTime(a.appointment_time.slice(0,5)); setNotes(a.notes ?? ""); setCustomerFound(false); setCustomerHistory([]); setError("");
-  };
-  const openCustomerDetail = async (a: Appointment) => {
-    const customer=customers.find(c=>c.id===a.customer_id)??{id:a.customer_id??"",name:a.customer_name,phone:a.customer_phone};
-    setCustomerDetail(customer);
-    if(!customer.id)return;
-    const h=await supabase.from("appointments").select("appointment_date,appointment_time,status,service_id").eq("company_id",companyId).eq("customer_id",customer.id).order("appointment_date",{ascending:false}).order("appointment_time",{ascending:false}).limit(20);
-    if(h.error)return;
-    const ids=[...new Set((h.data??[]).map((x:any)=>x.service_id).filter(Boolean))];
-    const hs=ids.length?await supabase.from("services").select("id,name,price").in("id",ids):{data:[],error:null};
-    const sm=new Map((hs.data??[]).map((x:any)=>[x.id,x]));
-    setCustomerHistory((h.data??[]).map((x:any)=>({appointment_date:x.appointment_date,appointment_time:x.appointment_time,status:x.status,services:sm.get(x.service_id)?.name??"Serviço",total:Number(sm.get(x.service_id)?.price??0)})));
-  };
-
-  const save = async () => {
-    if (!name.trim() || digits(phone).length < 8 || !serviceIds.length || !date || !time) return setError("Preencha nome, WhatsApp, serviço, data e horário.");
-    const primaryServiceId = serviceIds[0];
-    if (!primaryServiceId) return setError("Selecione pelo menos um serviço.");
-    try {
-      setSaving(true); setError("");
-      let customerId = customers.find(c => digits(c.phone ?? "") === digits(phone))?.id ?? null;
-      if (customerId) {
-        const r = await supabase.from("customers").update({ name: name.trim(), phone: phone.trim(), updated_at: new Date().toISOString() }).eq("id", customerId).eq("company_id", companyId);
-        if (r.error) throw r.error;
-      } else {
-        const r = await supabase.from("customers").insert({ company_id: companyId, name: name.trim(), phone: phone.trim() }).select("id").single();
-        if (r.error) throw r.error;
-        customerId = r.data.id;
-      }
-
-      let savedVehicleId: string | null = vehicleId !== "none" ? vehicleId : null;
-      if (!savedVehicleId && plate.trim()) {
-        const r = await supabase.from("vehicles").insert({ company_id: companyId, customer_id: customerId, plate: plate.trim().toUpperCase(), brand: brand.trim() || null, model: model.trim() || null }).select("id").single();
-        if (r.error) throw r.error;
-        savedVehicleId = r.data.id;
-      }
-
-      if(editingId){
-        const r=await supabase.from("appointments").update({customer_id:customerId,vehicle_id:savedVehicleId,service_id:primaryServiceId,customer_name:name.trim(),customer_phone:phone.trim(),vehicle_plate:plate.trim().toUpperCase()||null,appointment_date:date,appointment_time:time,notes:notes.trim()||null}).eq("id",editingId).eq("company_id",companyId);
-        if(r.error){if(r.error.code==="23505")throw new Error("Esse horário acabou de ser ocupado. Escolha outro.");throw r.error;}
-        const dr=await (supabase as any).from("appointment_services").delete().eq("appointment_id",editingId); if(dr.error)throw dr.error;
-        const sr=await (supabase as any).from("appointment_services").insert(selectedServices.map(s=>({appointment_id:editingId,service_id:s.id,price:Number(s.price),duration_minutes:s.estimated_duration??60}))); if(sr.error)throw sr.error;
-      }else{
-      const r = await supabase.from("appointments").insert({
-        company_id: companyId, customer_id: customerId, vehicle_id: savedVehicleId, service_id: primaryServiceId,
-        customer_name: name.trim(), customer_phone: phone.trim(), vehicle_plate: plate.trim().toUpperCase() || null,
-        appointment_date: date, appointment_time: time, notes: notes.trim() || null, status: "pending",
-      }).select("id");
-      if (r.error) {
-        if (r.error.code === "23505") throw new Error("Esse horário acabou de ser ocupado. Escolha outro.");
-        throw r.error;
-      }
-      const insertedId = r.data?.[0]?.id;
-      if (insertedId) { const sr = await (supabase as any).from("appointment_services").insert(selectedServices.map(s => ({ appointment_id: insertedId, service_id: s.id, price: Number(s.price), duration_minutes: s.estimated_duration ?? 60 }))); if (sr.error) throw sr.error; }
-      }
-      setShowForm(false); setEditingId(null); await load();
-    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar o agendamento."); }
-    finally { setSaving(false); }
-  };
-
-  const updateStatus = async (id: string, status: string) => {
-    const appointment = appointments.find((item) => item.id === id);
-    const { error: mutationError } = await supabase.from("appointments").update({ status }).eq("id", id).eq("company_id", companyId);
-    if (mutationError) { setError(mutationError.message); return; }
-    if (status === "confirmed" && appointment) {
-      const number = digits(appointment.customer_phone);
-      const message = encodeURIComponent(`Olá, ${appointment.customer_name}! 🚗✨ Seu agendamento foi confirmado para ${new Date(appointment.appointment_date + "T12:00:00").toLocaleDateString("pt-BR")} às ${appointment.appointment_time.slice(0, 5)}. Serviço: ${appointment.services?.map((s) => s.name).join(" + ") || appointment.service?.name || "serviço"}. Obrigado por escolher a ${companyName}!`);
-      if (number) {
-        window.open("https://wa.me/55" + number + "?text=" + message, "_blank", "noopener,noreferrer");
-      } else {
-        setError("Agendamento confirmado, mas o cliente não possui WhatsApp cadastrado.");
-      }
-    }
-    await load();
-  };
-
-  const remove = async (id: string) => {
-    if (!window.confirm("Excluir este agendamento?")) return;
-    const { error: mutationError } = await supabase.from("appointments").delete().eq("id", id).eq("company_id", companyId);
-    if (mutationError) setError(mutationError.message); else await load();
-  };
-
-  const publicLink = publicSlug ? window.location.origin + "/agendar/" + publicSlug : "";
-  const copyPublicLink = async () => { if (publicLink) await navigator.clipboard.writeText(publicLink); };
-
-  const whatsapp = (a: Appointment) => {
-    const msg = encodeURIComponent(`Olá, ${a.customer_name}! Seu agendamento está marcado para ${new Date(a.appointment_date + "T12:00:00").toLocaleDateString("pt-BR")} às ${a.appointment_time.slice(0,5)} para ${a.services?.map(s => s.name).join(" + ") || a.service?.name || "seu serviço"}.`);
-    const number = digits(a.customer_phone);
-    window.open(number ? "https://wa.me/55" + number + "?text=" + msg : "https://wa.me/?text=" + msg, "_blank", "noopener,noreferrer");
-  };
-
-  return <div className="space-y-6">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div><p className="text-sm font-medium text-primary">Agenda</p><h2 className="text-2xl font-bold">Agendamentos</h2><p className="text-sm text-muted-foreground">A agenda sempre fica em ordem e respeita a duração de cada serviço.</p></div>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => setDate(today())}>Hoje</Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 1); setDate(d.toLocaleDateString("en-CA")); }}>Amanhã</Button>
-        <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-auto" />
-        <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="pending">Pendentes</SelectItem><SelectItem value="confirmed">Confirmados</SelectItem><SelectItem value="completed">Concluídos</SelectItem><SelectItem value="cancelled">Cancelados</SelectItem></SelectContent></Select>
-        <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" />Novo</Button></div>
-    </div>
-    {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-
-    {showForm && <Card>
-      <CardHeader><div className="flex items-center justify-between"><div><h3 className="font-semibold">{editingId?"Editar agendamento":"Novo agendamento"}</h3><p className="text-sm text-muted-foreground">Digite o WhatsApp. Se já existir, nome e veículo serão puxados automaticamente.</p></div><Button variant="ghost" size="icon" onClick={() => setShowForm(false)}><X className="h-4 w-4" /></Button></div></CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2"><Label>WhatsApp *</Label><div className="flex gap-2"><Input value={phone} onChange={e => setPhone(e.target.value)} onBlur={() => void findCustomer()} placeholder="(48) 99999-9999" /><Button type="button" variant="outline" onClick={() => void findCustomer()}><Search className="h-4 w-4" /></Button></div>{customerFound && <p className="text-xs text-green-600">Cliente encontrado. Veículos e histórico foram carregados.</p>}{customerFound && customerHistory.length > 0 && <div className="mt-2 rounded-lg border bg-muted/30 p-3"><p className="mb-2 text-xs font-semibold">Últimos atendimentos</p><div className="space-y-1">{customerHistory.slice(0,4).map((h,i)=><div key={i} className="flex justify-between gap-3 text-xs"><span>{new Date(h.appointment_date+"T12:00:00").toLocaleDateString("pt-BR")} · {h.services || "Serviço"}</span><span className="font-medium">{money(h.total)}</span></div>)}</div></div>}</div>
-          <div className="space-y-2"><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Nome do cliente" /></div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2 sm:col-span-1"><Label>Veículo</Label><Select value={vehicleId} onValueChange={chooseVehicle}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="none">Novo / não informado</SelectItem>{vehicles.map(v => <SelectItem key={v.id} value={v.id}>{[v.plate,v.brand,v.model].filter(Boolean).join(" · ")}</SelectItem>)}</SelectContent></Select></div>
-          <div className="space-y-2"><Label>Placa</Label><Input value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="ABC1D23" /></div>
-          <div className="space-y-2"><Label>Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Civic" /></div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2"><Label>Serviços *</Label><div className="grid gap-2">{services.map(s => <label key={s.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-all ${serviceIds.includes(s.id) ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20" : "border-border bg-background hover:border-primary/35 hover:bg-primary/[0.03]"}`}><input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => { setServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setTime(""); }} className="h-4 w-4 accent-primary" /><span className="flex-1 text-sm font-medium">{s.name}</span><span className="text-xs text-muted-foreground">{s.estimated_duration ?? 60} min · {money(Number(s.price))}</span></label>)}</div>{servicesError && <p className="text-xs text-destructive">Erro ao carregar serviços: {servicesError}</p>}{!servicesError && services.length === 0 && <p className="text-xs text-muted-foreground">Cadastre um serviço em Serviços e ele aparecerá aqui.</p>}</div>
-          <div className="space-y-2"><Label>Data *</Label><Input type="date" min={today()} value={date} onChange={e => { setDate(e.target.value); setTime(""); }} /></div>
-          <div className="space-y-2"><Label>Horário disponível *</Label><Select value={time} onValueChange={setTime}><SelectTrigger><SelectValue placeholder={slots.length ? "Escolha um horário" : "Selecione serviço"} /></SelectTrigger><SelectContent>{slots.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
-        </div>
-        {selectedServices.length > 0 && <div className="rounded-lg bg-muted/50 p-3 text-sm"><strong>{selectedServices.map(s => s.name).join(" + ")}</strong><br />Tempo total: {totalDuration} minutos · Valor total: {money(totalPrice)}. Os horários acima já consideram todos os serviços selecionados.</div>}
-        <div className="space-y-2"><Label>Observações</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opcional" /></div>
-        <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button><Button onClick={() => void save()} disabled={saving || !time}>{saving ? "Salvando..." : "Salvar agendamento"}</Button></div>
-      </CardContent>
-    </Card>}
-
-    {publicLink && <Card><CardContent className="p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><p className="font-semibold">Link de agendamento para seus clientes</p><p className="truncate text-sm text-muted-foreground">{publicLink}</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => void copyPublicLink()}><Copy className="mr-2 h-4 w-4" />Copiar</Button><Button variant="outline" asChild><a href={publicLink} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" />Abrir</a></Button></div></div></CardContent></Card>}
-
-    <div className="grid gap-4 sm:grid-cols-4">
-      <Metric label="Agendamentos" value={String(appointments.length)} />
-      <Metric label="Confirmados" value={String(appointments.filter(a => a.status === "confirmed").length)} />
-      <Metric label="Concluídos" value={String(appointments.filter(a => a.status === "completed").length)} />
-      <Metric label="Valor agendado" value={money(appointments.filter(a => a.status !== "cancelled").reduce((s,a) => s + a.totalPrice, 0))} />
-    </div>
-
-    <Card><CardHeader><h3 className="font-semibold">Agenda de {new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}</h3><p className="text-sm text-muted-foreground">{statusFilter === "all" ? "Todos os agendamentos" : statusFilter === "confirmed" ? "Somente confirmados" : statusFilter === "pending" ? "Somente pendentes" : statusFilter === "completed" ? "Somente concluídos" : "Somente cancelados"}</p></CardHeader><CardContent className="p-0">
-      {loading ? <div className="p-6 text-sm text-muted-foreground">Carregando...</div> : appointments.filter((a) => statusFilter === "all" || a.status === statusFilter).length === 0 ? <div className="p-6 text-sm text-muted-foreground">Nenhum agendamento neste dia.</div> :
-      <div className="divide-y divide-border/60">{appointments.filter((a) => statusFilter === "all" || a.status === statusFilter).map(a => <div key={a.id} className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 gap-3"><div className="min-w-16 rounded-lg bg-primary/10 px-2 py-2 text-center font-bold text-primary">{a.appointment_time.slice(0,5)}</div><div className="min-w-0"><button type="button" onClick={() => void openCustomerDetail(a)} className="font-semibold text-left hover:text-primary hover:underline">{a.customer_name}</button><p className="text-sm text-muted-foreground"><UserRound className="mr-1 inline h-3.5 w-3.5" />{a.customer_phone}</p><p className="text-sm text-muted-foreground"><Car className="mr-1 inline h-3.5 w-3.5" />{a.vehicle ? [a.vehicle.plate,a.vehicle.brand,a.vehicle.model].filter(Boolean).join(" · ") : a.vehicle_plate || "Veículo não informado"}</p><p className="mt-1 text-xs text-muted-foreground"><Clock3 className="mr-1 inline h-3.5 w-3.5" />{a.services?.length ? a.services.map(s => s.name).join(" + ") : (a.service?.name ?? "Serviço")} · {a.totalDuration} min · {money(a.totalPrice)}</p></div></div>
-        <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-muted px-3 py-1 text-xs">{a.status === "pending" ? "Pendente" : a.status === "confirmed" ? "Confirmado" : a.status === "completed" ? "Concluído" : "Cancelado"}</span>{a.status !== "cancelled" && a.status !== "completed" && <><Button variant="outline" size="sm" onClick={() => openEdit(a)}>✎ Editar</Button><Button variant="outline" size="sm" onClick={() => void updateStatus(a.id, a.status === "pending" ? "confirmed" : "completed")}>{a.status === "pending" ? <><Check className="mr-2 h-4 w-4" />Confirmar</> : <><Check className="mr-2 h-4 w-4" />Concluir</>}</Button></>}{a.status !== "cancelled" && <Button variant="outline" size="sm" onClick={() => whatsapp(a)}><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</Button>}{a.status !== "cancelled" && a.status !== "completed" && <Button variant="ghost" size="icon" onClick={() => void updateStatus(a.id, "cancelled")}><X className="h-4 w-4" /></Button>}<Button variant="ghost" size="icon" onClick={() => void remove(a.id)}><Trash2 className="h-4 w-4" /></Button></div>
-      </div>)}</div>}
-    </CardContent></Card>
-  {customerDetail && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={()=>setCustomerDetail(null)}><Card className="w-full max-w-lg shadow-2xl" onClick={e=>e.stopPropagation()}><CardHeader><div className="flex items-center justify-between"><div><h3 className="font-semibold">{customerDetail.name}</h3><p className="text-sm text-muted-foreground">{customerDetail.phone||"WhatsApp não informado"}</p></div><Button variant="ghost" size="icon" onClick={()=>setCustomerDetail(null)}><X className="h-4 w-4"/></Button></div></CardHeader><CardContent><p className="mb-3 text-sm font-semibold">Histórico de atendimentos</p>{customerHistory.length===0?<p className="text-sm text-muted-foreground">Nenhum atendimento registrado.</p>:<div className="divide-y rounded-xl border">{customerHistory.map((h,i)=><div key={i} className="flex items-center justify-between gap-3 p-3 text-sm"><div><p>{new Date(h.appointment_date+"T12:00:00").toLocaleDateString("pt-BR")} · {h.appointment_time.slice(0,5)}</p><p className="text-xs text-muted-foreground">{h.services} · {h.status==="completed"?"Concluído":h.status==="confirmed"?"Confirmado":h.status==="cancelled"?"Cancelado":"Pendente"}</p></div><span className="font-semibold">{money(h.total)}</span></div>)}</div>}</CardContent></Card></div>}
-  </div>;
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></CardContent></Card>;
+function AgendaPage(){
+ const [date,setDate]=useState(today()); const [items,setItems]=useState<Appointment[]>([]); const [loading,setLoading]=useState(true); const [error,setError]=useState("");
+ const load=async()=>{
+  try{setLoading(true);setError("");const companyId=await getCurrentCompanyId();
+   const r=await supabase.from("appointments").select("id,customer_name,customer_phone,vehicle_plate,appointment_time,status,total_price,total_duration,service:services(id,name)").eq("company_id",companyId).eq("appointment_date",date).neq("status","cancelled").order("appointment_time");
+   if(r.error)throw r.error;const rows=r.data??[];const ids=rows.map(x=>x.id);
+   const links=ids.length?await (supabase as any).from("appointment_services").select("appointment_id,service_id,price,duration_minutes,service:services(id,name)").in("appointment_id",ids):{data:[],error:null};
+   if(links.error)throw links.error;
+   const grouped=new Map<string,any[]>();for(const x of links.data??[])grouped.set(x.appointment_id,[...(grouped.get(x.appointment_id)??[]),x]);
+   setItems(rows.map((x:any)=>{const ls=grouped.get(x.id)??[];const fallback=x.service?[x.service]:[];return {...x,total_price:ls.length?ls.reduce((s:number,y:any)=>s+Number(y.price),0):Number(x.total_price??0),total_duration:ls.length?ls.reduce((s:number,y:any)=>s+Number(y.duration_minutes??60),0):Number(x.total_duration??0),services:ls.length?ls.map(y=>y.service).filter(Boolean):fallback}}));
+  }catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar a agenda.");}finally{setLoading(false)}
+ };
+ useEffect(()=>{void load()},[date]);
+ const move=async(a:Appointment)=>{
+  const next=a.status==="pending"?"confirmed":a.status==="confirmed"?"completed":a.status==="completed"?"delivered":null;if(!next)return;
+  const now=new Date().toISOString();const patch:any={status:next,updated_at:now};if(next==="confirmed")patch.washing_at=now;if(next==="completed")patch.ready_at=now;if(next==="delivered")patch.completed_at=now;
+  const r=await supabase.from("appointments").update(patch).eq("id",a.id);if(r.error)setError(r.error.message);else void load();
+ };
+ const cancel=async(a:Appointment)=>{if(!window.confirm("Cancelar este atendimento?"))return;const r=await supabase.from("appointments").update({status:"cancelled",updated_at:new Date().toISOString()}).eq("id",a.id);if(r.error)setError(r.error.message);else void load()};
+ const whatsapp=(a:Appointment)=>{const phone=(a.customer_phone||"").replace(/\D/g,"");if(phone.length<8)return;const msg=encodeURIComponent(`Olá, ${a.customer_name}! Seu veículo está pronto para retirada na LavaPro. 🚗✨`);window.open(`https://wa.me/${phone.startsWith("55")?phone:"55"+phone}?text=${msg}`,"_blank","noopener,noreferrer")};
+ return <div className="mx-auto max-w-7xl space-y-5 pb-10">
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary"><Sparkles className="h-4 w-4"/>Painel de atendimento</div><h1 className="mt-1 text-3xl font-bold tracking-tight">Operação do dia</h1><p className="text-sm capitalize text-muted-foreground">{new Date(date+"T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"})}</p></div><div className="flex gap-2"><Button variant="outline" size="icon" onClick={()=>setDate(d=>{const x=new Date(d+"T12:00:00");x.setDate(x.getDate()-1);return x.toLocaleDateString("en-CA")})}><ChevronLeft/></Button><Button variant="outline" onClick={()=>setDate(today())}>Hoje</Button><Button variant="outline" size="icon" onClick={()=>setDate(d=>{const x=new Date(d+"T12:00:00");x.setDate(x.getDate()+1);return x.toLocaleDateString("en-CA")})}><ChevronRight/></Button><Button asChild><Link to="/agendar/lavapro"><Plus className="mr-2 h-4 w-4"/>Novo encaixe</Link></Button></div></div>
+  {error&&<div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{statuses.map(s=>{const list=items.filter(a=>a.status===s.key);const Icon=s.icon;return <Card key={s.key} className="rounded-2xl border-border/60 shadow-sm"><CardHeader className="pb-3"><div className="flex items-center justify-between"><div className="flex items-center gap-2 font-semibold"><Icon className="h-4 w-4 text-primary"/>{s.label}</div><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold">{list.length}</span></div></CardHeader><CardContent className="space-y-3">{loading?<div className="h-24 animate-pulse rounded-xl bg-muted"/>:list.length===0?<p className="py-8 text-center text-xs text-muted-foreground">Nenhum veículo</p>:list.map(a=><div key={a.id} className="rounded-xl border bg-card p-3 shadow-sm"><div className="flex items-start justify-between gap-2"><div><p className="font-semibold">{a.customer_name}</p><p className="text-xs text-muted-foreground">{a.vehicle_plate||"Placa não informada"} · {a.appointment_time.slice(0,5)}</p></div><span className="text-sm font-bold">{money(a.total_price)}</span></div><p className="mt-2 text-xs text-muted-foreground">{a.services.map(x=>x.name).join(" + ")||"Serviço"} · {a.total_duration} min</p><div className="mt-3 flex gap-2">{a.status!=="delivered"&&<Button size="sm" className="flex-1" onClick={()=>void move(a)}>{a.status==="pending"?"Iniciar":a.status==="confirmed"?"Marcar pronto":"Concluir"}</Button>}{a.status==="completed"&&<Button size="sm" variant="outline" onClick={()=>whatsapp(a)}>WhatsApp</Button>}{a.status==="pending"&&<Button size="sm" variant="ghost" onClick={()=>void cancel(a)}>Cancelar</Button>}</div></div>)}</CardContent></Card>})}</div>
+  <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-xs text-muted-foreground"><span className="flex items-center gap-2"><RotateCcw className="h-4 w-4"/>A operação usa os mesmos agendamentos do portal público.</span><Link to="/configuracoes" className="font-semibold text-primary">Configurações</Link></div>
+ </div>
 }
