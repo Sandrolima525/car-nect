@@ -73,11 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <h1 className="truncate text-base font-bold tracking-tight text-foreground sm:text-lg">{current?.label ?? "LavaPro"}</h1>
             {current && current.to !== "/dashboard" && <Breadcrumb className="hidden sm:block"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink asChild><Link to="/dashboard">Início</Link></BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{current.label}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>}
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-xl" aria-label="Notificações"><Bell className="h-4 w-4" /></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72"><DropdownMenuLabel>Notificações</DropdownMenuLabel><DropdownMenuSeparator /><p className="px-2 py-4 text-sm text-muted-foreground">Nenhuma notificação por enquanto.</p></DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
+      <DropdownMenu>
             <DropdownMenuTrigger asChild><button type="button" className={cn("flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-sm transition-all hover:scale-105 hover:shadow-md hover:shadow-primary/20")} aria-label="Menu do usuário">{initials(displayName) || "U"}</button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56"><DropdownMenuLabel><span className="block truncate">{displayName}</span><span className="block text-xs font-normal text-muted-foreground">{profile ? ROLE_LABELS[profile.role] : "—"}</span></DropdownMenuLabel><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => void signOut()}><LogOut className="mr-2 h-4 w-4" />Sair</DropdownMenuItem></DropdownMenuContent>
           </DropdownMenu>
