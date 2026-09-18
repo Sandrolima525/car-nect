@@ -1,368 +1,186 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Trash2 } from "lucide-react";
-
+import { CalendarDays, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentCompanyId } from "@/services/company";
 
-export const Route = createFileRoute("/_authenticated/ordens")({
-  component: OrdensPage,
-});
+export const Route = createFileRoute("/_authenticated/ordens")({ component: OrdensPage });
 
-type Customer = { id: string; name: string; phone: string | null };
-type Vehicle = { id: string; customer_id: string; plate: string; brand: string | null; model: string | null };
-type Employee = { id: string; name: string; role: string | null };
-type Service = { id: string; name: string; price: number; estimated_duration: number | null };
-type Order = {
-  id: string;
-  customer_id: string | null;
-  vehicle_id: string | null;
-  status: string;
-  total: number;
-  created_at: string;
+type Appointment = {
+  id: string; customer_id: string | null; customer_name: string; customer_phone: string;
+  vehicle_id: string | null; vehicle_plate: string | null; appointment_date: string; appointment_time: string;
+  status: string; notes: string | null;
+  service: { id: string; name: string; price: number } | null;
+  vehicle: { id: string; plate: string; brand: string | null; model: string | null } | null;
 };
+type Service = { id: string; name: string; price: number };
+type Order = { id: string; customer_id: string | null; appointment_id: string | null; status: string; total: number; created_at: string };
 
-type Item = { serviceId: string; quantity: number };
-
-const money = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const today = () => new Date().toLocaleDateString("en-CA");
 
 function OrdensPage() {
   const [companyId, setCompanyId] = useState("");
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [date, setDate] = useState(today());
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [customerId, setCustomerId] = useState("");
-  const [vehicleId, setVehicleId] = useState("");
-  const [employeeId, setEmployeeId] = useState("");
-  const [status, setStatus] = useState("pending");
-  const [mileage, setMileage] = useState("");
-  const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<Item[]>([]);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [serviceId, setServiceId] = useState("");
+  const [price, setPrice] = useState("");
   const [discount, setDiscount] = useState("");
+  const [notes, setNotes] = useState("");
+  const [status, setStatus] = useState("in_progress");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const load = async () => {
     try {
-      setLoading(true);
-      setError("");
+      setLoading(true); setError("");
       const id = companyId || (await getCurrentCompanyId());
       setCompanyId(id);
-
-      const [customerRes, vehicleRes, employeeRes, serviceRes, orderRes] =
-        await Promise.all([
-          supabase.from("customers").select("id,name,phone").eq("company_id", id).order("name"),
-          supabase.from("vehicles").select("id,customer_id,plate,brand,model").eq("company_id", id).order("plate"),
-          supabase.from("employees").select("id,name,role").eq("company_id", id).eq("active", true).order("name"),
-          supabase.from("services").select("id,name,price,estimated_duration").eq("company_id", id).eq("active", true).order("name"),
-          supabase.from("service_orders").select("id,customer_id,vehicle_id,status,total,created_at").eq("company_id", id).order("created_at", { ascending: false }),
-        ]);
-
-      for (const result of [customerRes, vehicleRes, serviceRes, orderRes]) {
-        if (result.error) throw result.error;
-      }
-
-      setCustomers((customerRes.data ?? []) as Customer[]);
-      setVehicles((vehicleRes.data ?? []) as Vehicle[]);
-      setEmployees((employeeRes.data ?? []) as Employee[]);
+      const [appointmentRes, serviceRes, orderRes] = await Promise.all([
+        supabase.from("appointments").select("id,customer_id,customer_name,customer_phone,vehicle_id,vehicle_plate,appointment_date,appointment_time,status,notes,service:services(id,name,price),vehicle:vehicles(id,plate,brand,model)").eq("company_id", id).eq("appointment_date", date).order("appointment_time"),
+        supabase.from("services").select("id,name,price").eq("company_id", id).eq("active", true).order("name"),
+        supabase.from("service_orders").select("id,customer_id,appointment_id,status,total,created_at").eq("company_id", id).order("created_at", { ascending: false }).limit(30),
+      ]);
+      for (const result of [appointmentRes, serviceRes, orderRes]) if (result.error) throw result.error;
+      setAppointments((appointmentRes.data ?? []) as unknown as Appointment[]);
       setServices((serviceRes.data ?? []) as Service[]);
       setOrders((orderRes.data ?? []) as Order[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar as ordens.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    void load();
-  }, []);
+  useEffect(() => { void load(); }, [date]);
 
-  const customerVehicles = useMemo(
-    () => vehicles.filter((vehicle) => vehicle.customer_id === customerId),
-    [vehicles, customerId],
-  );
+  const selectedService = useMemo(() => services.find((service) => service.id === serviceId), [services, serviceId]);
+  const total = Math.max(0, (Number(price) || 0) - Math.max(0, Number(discount) || 0));
 
-  const subtotal = useMemo(
-    () => items.reduce((sum, item) => {
-      const service = services.find((entry) => entry.id === item.serviceId);
-      return sum + (service?.price ?? 0) * item.quantity;
-    }, 0),
-    [items, services],
-  );
-
-  const discountValue = Math.max(0, Number(discount) || 0);
-  const total = Math.max(0, subtotal - discountValue);
-
-  const addService = () => {
-    if (!services.length) return;
-    setItems((current) => [...current, { serviceId: services[0].id, quantity: 1 }]);
+  const chooseAppointment = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    const initialServiceId = appointment.service?.id ?? "";
+    setServiceId(initialServiceId);
+    setPrice(initialServiceId ? String(Number(appointment.service?.price ?? 0)) : "");
+    setDiscount(""); setNotes(appointment.notes ?? ""); setStatus("in_progress"); setError("");
   };
 
-  const updateItem = (index: number, patch: Partial<Item>) => {
-    setItems((current) =>
-      current.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, ...patch } : item,
-      ),
-    );
+  const changeService = (value: string) => {
+    setServiceId(value);
+    const service = services.find((item) => item.id === value);
+    setPrice(service ? String(Number(service.price)) : "");
   };
 
-  const resetForm = () => {
-    setCustomerId("");
-    setVehicleId("");
-    setEmployeeId("");
-    setStatus("pending");
-    setMileage("");
-    setNotes("");
-    setItems([]);
-    setDiscount("");
+  const reset = () => {
+    setSelectedAppointment(null); setServiceId(""); setPrice(""); setDiscount(""); setNotes(""); setStatus("in_progress");
   };
 
   const save = async () => {
-    if (!customerId) {
-      setError("Selecione o cliente.");
-      return;
-    }
-    if (!vehicleId) {
-      setError("Selecione o veículo.");
-      return;
-    }
-    if (items.length === 0) {
-      setError("Adicione pelo menos um serviço.");
-      return;
-    }
-
+    if (!selectedAppointment) return setError("Selecione um agendamento.");
+    if (!serviceId) return setError("Selecione o serviço realizado.");
+    if (!price || Number(price) < 0) return setError("Informe o valor cobrado.");
     try {
-      setSaving(true);
-      setError("");
-
-      const { data: order, error: orderError } = await supabase
-        .from("service_orders")
-        .insert({
-          company_id: companyId,
-          customer_id: customerId,
-          vehicle_id: vehicleId,
-          employee_id: employeeId || null,
-          status,
-          subtotal,
-          discount: discountValue,
-          total,
-          mileage: mileage ? Number(mileage) : null,
-          notes: notes.trim() || null,
-          started_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-
+      setSaving(true); setError("");
+      const subtotal = Number(price);
+      const discountValue = Math.max(0, Number(discount) || 0);
+      const finalTotal = Math.max(0, subtotal - discountValue);
+      const { data: order, error: orderError } = await supabase.from("service_orders").insert({
+        company_id: companyId, appointment_id: selectedAppointment.id, customer_id: selectedAppointment.customer_id,
+        vehicle_id: selectedAppointment.vehicle_id, status, subtotal, discount: discountValue, total: finalTotal,
+        notes: notes.trim() || null, started_at: new Date().toISOString(),
+      }).select("id").single();
       if (orderError) throw orderError;
-
-      const { error: itemsError } = await supabase
-        .from("service_order_items")
-        .insert(
-          items.map((item) => {
-            const service = services.find((entry) => entry.id === item.serviceId)!;
-            return {
-              company_id: companyId,
-              service_order_id: order.id,
-              service_id: service.id,
-              quantity: item.quantity,
-              unit_price: service.price,
-              total: service.price * item.quantity,
-            };
-          }),
-        );
-
-      if (itemsError) {
+      const { error: itemError } = await supabase.from("service_order_items").insert({
+        company_id: companyId, service_order_id: order.id, service_id: serviceId, quantity: 1, unit_price: subtotal, total: subtotal,
+      });
+      if (itemError) {
         await supabase.from("service_orders").delete().eq("id", order.id);
-        throw itemsError;
+        throw itemError;
       }
-
-      resetForm();
-      await load();
+      const { error: appointmentError } = await supabase.from("appointments").update({ status: "converted" }).eq("id", selectedAppointment.id).eq("company_id", companyId);
+      if (appointmentError) throw appointmentError;
+      reset(); await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar a ordem.");
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
-
-  const customerName = (id: string | null) =>
-    customers.find((customer) => customer.id === id)?.name ?? "—";
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Ordens de Serviço</h2>
-        <p className="text-muted-foreground">Abra uma OS em poucos passos.</p>
+        <p className="text-muted-foreground">Transforme os agendamentos do dia em ordens sem redigitar os dados do cliente.</p>
       </div>
-
-      {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      {error && <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
       <Card>
         <CardHeader>
-          <h3 className="font-semibold">Nova OS</h3>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div><h3 className="font-semibold">Agendamentos do dia</h3><p className="text-sm text-muted-foreground">Selecione um cliente para abrir a OS.</p></div>
+            <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-muted-foreground" /><Input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="w-auto" /></div>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Cliente *</Label>
-              <Select value={customerId} onValueChange={(value) => {
-                setCustomerId(value);
-                setVehicleId("");
-              }}>
-                <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
-                <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Veículo *</Label>
-              <Select value={vehicleId} onValueChange={setVehicleId} disabled={!customerId}>
-                <SelectTrigger><SelectValue placeholder={customerId ? "Selecione o veículo" : "Escolha o cliente primeiro"} /></SelectTrigger>
-                <SelectContent>
-                  {customerVehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.plate} · {[vehicle.brand, vehicle.model].filter(Boolean).join(" ")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Serviços *</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addService} disabled={!services.length}>
-                <Plus className="mr-2 h-4 w-4" />Adicionar serviço
-              </Button>
-            </div>
-
-            {items.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">
-                Nenhum serviço adicionado.
+        <CardContent className="p-0">
+          {loading ? <div className="p-6 text-sm text-muted-foreground">Carregando...</div> :
+          appointments.length === 0 ? <div className="p-6 text-sm text-muted-foreground">Nenhum agendamento para {new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}.</div> :
+          <div className="divide-y">{appointments.map((appointment) => (
+            <button key={appointment.id} type="button" onClick={() => chooseAppointment(appointment)} disabled={appointment.status === "converted"} className="flex w-full flex-col gap-3 p-4 text-left transition hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="min-w-16 rounded-lg bg-muted px-2 py-1 text-center text-sm font-semibold">{appointment.appointment_time.slice(0, 5)}</div>
+                <div>
+                  <p className="font-semibold">{appointment.customer_name}</p>
+                  <p className="text-sm text-muted-foreground">{appointment.customer_phone}</p>
+                  <p className="text-xs text-muted-foreground">{appointment.vehicle ? [appointment.vehicle.plate, appointment.vehicle.brand, appointment.vehicle.model].filter(Boolean).join(" · ") : appointment.vehicle_plate || "Veículo não informado"} · {appointment.service?.name ?? "Serviço não informado"}</p>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {items.map((item, index) => {
-                  const service = services.find((entry) => entry.id === item.serviceId);
-                  return (
-                    <div key={index} className="grid gap-3 rounded-lg border p-3 md:grid-cols-[1fr_110px_auto_auto] md:items-end">
-                      <div className="space-y-2">
-                        <Label>Serviço</Label>
-                        <Select value={item.serviceId} onValueChange={(value) => updateItem(index, { serviceId: value })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {services.map((entry) => (
-                              <SelectItem key={entry.id} value={entry.id}>
-                                {entry.name} · {money(entry.price)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Qtd.</Label>
-                        <Input type="number" min="1" step="1" value={item.quantity} onChange={(event) => updateItem(index, { quantity: Math.max(1, Number(event.target.value) || 1) })} />
-                      </div>
-                      <div className="pb-2 text-sm font-medium">{money((service?.price ?? 0) * item.quantity)}</div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Desconto</Label>
-              <Input type="number" min="0" step="0.01" value={discount} onChange={(event) => setDiscount(event.target.value)} placeholder="0,00" />
-            </div>
-            <div className="space-y-2">
-              <Label>Quilometragem</Label>
-              <Input type="number" min="0" value={mileage} onChange={(event) => setMileage(event.target.value)} placeholder="Opcional" />
-            </div>
-            <div className="space-y-2">
-              <Label>Responsável</Label>
-              <Select value={employeeId} onValueChange={setEmployeeId}>
-                <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                <SelectContent>
-                  {employees.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>{employee.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Observações</Label>
-            <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Observações da OS (opcional)" />
-          </div>
-
-          <div className="flex flex-col gap-3 rounded-xl bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total da OS</p>
-              <p className="text-2xl font-bold">{money(total)}</p>
-              {discountValue > 0 && <p className="text-xs text-muted-foreground">Subtotal {money(subtotal)} · Desconto {money(discountValue)}</p>}
-            </div>
-            <Button onClick={() => void save()} disabled={saving || !customerId || !vehicleId || items.length === 0}>
-              {saving ? "Salvando..." : "Abrir OS"}
-            </Button>
-          </div>
+              <span className="rounded-full bg-muted px-3 py-1 text-xs">{appointment.status === "converted" ? "OS criada" : "Abrir OS"}</span>
+            </button>
+          ))}</div>}
         </CardContent>
       </Card>
+
+      {selectedAppointment && (
+        <Card>
+          <CardHeader>
+            <h3 className="font-semibold">Nova Ordem de Serviço</h3>
+            <p className="text-sm text-muted-foreground">{selectedAppointment.customer_name} · {selectedAppointment.appointment_time.slice(0, 5)}{selectedAppointment.vehicle ? " · " + selectedAppointment.vehicle.plate : ""}</p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="rounded-xl bg-muted/50 p-4">
+              <p className="font-medium">{selectedAppointment.customer_name}</p>
+              <p className="text-sm text-muted-foreground">{selectedAppointment.customer_phone}</p>
+              {selectedAppointment.vehicle && <p className="mt-1 text-sm text-muted-foreground">{[selectedAppointment.vehicle.plate, selectedAppointment.vehicle.brand, selectedAppointment.vehicle.model].filter(Boolean).join(" · ")}</p>}
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2"><Label>Serviço realizado *</Label><Select value={serviceId} onValueChange={changeService}><SelectTrigger><SelectValue placeholder="Selecione o serviço" /></SelectTrigger><SelectContent>{services.map((service) => <SelectItem key={service.id} value={service.id}>{service.name}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2"><Label>Valor cobrado *</Label><Input type="number" min="0" step="0.01" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="0,00" />{selectedService && <p className="text-xs text-muted-foreground">Preço cadastrado: {money(Number(selectedService.price))}</p>}</div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2"><Label>Desconto</Label><Input type="number" min="0" step="0.01" value={discount} onChange={(event) => setDiscount(event.target.value)} placeholder="0,00" /></div>
+              <div className="space-y-2"><Label>Status</Label><Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="in_progress">Em andamento</SelectItem><SelectItem value="completed">Concluída</SelectItem><SelectItem value="delivered">Entregue</SelectItem></SelectContent></Select></div>
+            </div>
+            <div className="space-y-2"><Label>Observações</Label><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional" /></div>
+            <div className="flex flex-col gap-3 rounded-xl bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div><p className="text-sm text-muted-foreground">Total da OS</p><p className="text-2xl font-bold">{money(total)}</p></div>
+              <div className="flex gap-2"><Button variant="outline" onClick={reset}>Cancelar</Button><Button onClick={() => void save()} disabled={saving}><CheckCircle2 className="mr-2 h-4 w-4" />{saving ? "Salvando..." : "Criar OS"}</Button></div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader><h3 className="font-semibold">Últimas ordens</h3></CardHeader>
         <CardContent className="p-0">
-          {loading ? (
-            <div className="p-6 text-sm text-muted-foreground">Carregando...</div>
-          ) : orders.length === 0 ? (
-            <div className="p-6 text-sm text-muted-foreground">Nenhuma ordem cadastrada.</div>
-          ) : (
-            <div className="divide-y">
-              {orders.map((order) => (
-                <div key={order.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-medium">{customerName(order.customer_id)}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs">{order.status}</span>
-                    <span className="font-semibold">{money(Number(order.total))}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {orders.length === 0 ? <div className="p-6 text-sm text-muted-foreground">Nenhuma ordem cadastrada.</div> :
+          <div className="divide-y">{orders.map((order) => <div key={order.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{order.appointment_id ? "Agendamento convertido em OS" : "OS manual"}</p><p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p></div><div className="flex items-center gap-4"><span className="rounded-full bg-muted px-2.5 py-1 text-xs">{order.status}</span><span className="font-semibold">{money(Number(order.total))}</span></div></div>)}</div>}
         </CardContent>
       </Card>
     </div>
