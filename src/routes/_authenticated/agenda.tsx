@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/agenda")({
 type Service = { id: string; name: string; price: number; estimated_duration: number | null };
 type Customer = { id: string; name: string; phone: string | null };
 type Vehicle = { id: string; plate: string | null; brand: string | null; model: string | null };
+type CustomerHistory = { appointment_date: string; appointment_time: string; status: string; services: string; total: number };
 type Appointment = {
   id: string; customer_id: string | null; customer_name: string; customer_phone: string;
   appointment_date: string; appointment_time: string; status: string; notes: string | null;
@@ -56,7 +57,7 @@ function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [customerFound, setCustomerFound] = useState(false);
+  const [customerFound, setCustomerFound] = useState(false);\n  const [customerHistory, setCustomerHistory] = useState<CustomerHistory[]>([]);
   const [publicSlug, setPublicSlug] = useState("");
 
   const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
@@ -134,7 +135,7 @@ function AgendaPage() {
 
   const openNew = () => {
     setShowForm(true); setPhone(""); setName(""); setVehicles([]); setVehicleId("none"); setPlate(""); setBrand(""); setModel("");
-    setServiceIds(services[0]?.id ? [services[0].id] : []); setTime(""); setNotes(""); setCustomerFound(false); setError("");
+    setServiceIds(services[0]?.id ? [services[0].id] : []); setTime(""); setNotes(""); setCustomerFound(false); setCustomerHistory([]); setError("");
   };
 
   const findCustomer = async () => {
@@ -245,7 +246,7 @@ function AgendaPage() {
       <CardHeader><div className="flex items-center justify-between"><div><h3 className="font-semibold">Novo agendamento</h3><p className="text-sm text-muted-foreground">Digite o WhatsApp. Se já existir, nome e veículo serão puxados automaticamente.</p></div><Button variant="ghost" size="icon" onClick={() => setShowForm(false)}><X className="h-4 w-4" /></Button></div></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2"><Label>WhatsApp *</Label><div className="flex gap-2"><Input value={phone} onChange={e => setPhone(e.target.value)} onBlur={() => void findCustomer()} placeholder="(48) 99999-9999" /><Button type="button" variant="outline" onClick={() => void findCustomer()}><Search className="h-4 w-4" /></Button></div>{customerFound && <p className="text-xs text-green-600">Cliente encontrado.</p>}</div>
+          <div className="space-y-2"><Label>WhatsApp *</Label><div className="flex gap-2"><Input value={phone} onChange={e => setPhone(e.target.value)} onBlur={() => void findCustomer()} placeholder="(48) 99999-9999" /><Button type="button" variant="outline" onClick={() => void findCustomer()}><Search className="h-4 w-4" /></Button></div>{customerFound && <p className="text-xs text-green-600">Cliente encontrado. Veículos e histórico foram carregados.</p>}{customerFound && customerHistory.length > 0 && <div className="mt-2 rounded-lg border bg-muted/30 p-3"><p className="mb-2 text-xs font-semibold">Últimos atendimentos</p><div className="space-y-1">{customerHistory.slice(0,4).map((h,i)=><div key={i} className="flex justify-between gap-3 text-xs"><span>{new Date(h.appointment_date+"T12:00:00").toLocaleDateString("pt-BR")} · {h.services || "Serviço"}</span><span className="font-medium">{money(h.total)}</span></div>)}</div></div>}</div>
           <div className="space-y-2"><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Nome do cliente" /></div>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
