@@ -54,7 +54,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="border-t border-sidebar-border bg-sidebar/60 px-4 py-4">
         <div className="mb-3 flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-foreground/10 text-xs font-bold text-sidebar-foreground">{initials(displayName) || "U"}</div>
-          <div className="min-w-0"><p className="truncate text-sm font-semibold text-sidebar-foreground">{displayName}</p><p className="truncate text-xs text-sidebar-foreground/50">{profile ? ROLE_LABELS[profile.role] : "—"}</p></div>
+          <div className="min-w-0"><p className="truncate text-sm font-semibold text-sidebar-foreground">{displayName}</p><p className="truncate text-xs text-sidebar-foreground/50">{profile ? ROLE_LABELS[profile.role as keyof typeof ROLE_LABELS] : "—"}</p></div>
         </div>
         <p className="mb-3 truncate text-[11px] text-sidebar-foreground/40">{company?.trade_name ?? company?.name ?? "Sem empresa vinculada"}</p>
         <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground" onClick={() => void signOut()}><LogOut className="h-4 w-4" />Sair</Button>
