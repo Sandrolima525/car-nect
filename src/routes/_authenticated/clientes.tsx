@@ -1,60 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Car, ClipboardList, Clock3, ExternalLink, Phone, UserRound } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Car, Clock3, MessageCircle, Search, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CrudPage } from "@/components/common/crud-page";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentCompanyId } from "@/services/company";
 
-export const Route = createFileRoute("/_authenticated/clientes")({ component: ClientesPage });
+export const Route=createFileRoute("/_authenticated/clientes")({component:ClientesPage});
+type Customer={id:string;name:string;phone:string|null;email:string|null;notes:string|null;created_at:string};
+type Vehicle={id:string;plate:string|null;brand:string|null;model:string|null;category:string};
+type Visit={id:string;appointment_date:string;appointment_time:string;status:string;total_price:number;total_duration:number;source:string;vehicle_plate:string|null;services:string[]};
 
-type Customer = { id: string; name: string; phone: string | null; email: string | null; document: string | null; notes: string | null };
-type Vehicle = { id: string; plate: string; brand: string | null; model: string | null };
-type HistoryOrder = { id: string; total: number; status: string; created_at: string; vehicle: { plate: string; brand: string | null; model: string | null } | null; items: { service: { name: string } | null }[] };
-
-function CustomerHistory({ customer }: { customer: Customer }) {
-  const [history, setHistory] = useState<HistoryOrder[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      const [ordersRes, vehiclesRes] = await Promise.all([
-        (supabase as any).from("service_orders").select("id,total,status,created_at,vehicle:vehicles(plate,brand,model),items:service_order_items(service:services(name))").eq("customer_id", customer.id).order("created_at", { ascending: false }).limit(20),
-        supabase.from("vehicles").select("id,plate,brand,model").eq("customer_id", customer.id).order("created_at", { ascending: false }),
-      ]);
-      if (!ordersRes.error) setHistory((ordersRes.data ?? []) as HistoryOrder[]);
-      if (!vehiclesRes.error) setVehicles((vehiclesRes.data ?? []) as Vehicle[]);
-      setLoading(false);
-    })();
-  }, [customer.id]);
-
-  const totalSpent = history.reduce((sum, item) => sum + Number(item.total || 0), 0);
-
-  return <div className="space-y-5 border-t bg-muted/20 p-5">
-    <div className="grid gap-3 sm:grid-cols-3">
-      <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Atendimentos</p><p className="mt-1 text-2xl font-semibold">{history.length}</p></div>
-      <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Total em serviços</p><p className="mt-1 text-2xl font-semibold">R$ {totalSpent.toFixed(2).replace(".", ",")}</p></div>
-      <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Veículos</p><p className="mt-1 text-2xl font-semibold">{vehicles.length}</p></div>
-    </div>
-    {vehicles.length > 0 && <div><div className="mb-2 flex items-center gap-2 font-semibold"><Car className="h-4 w-4" /> Veículos</div><div className="flex flex-wrap gap-2">{vehicles.map(v => <span key={v.id} className="rounded-full border bg-card px-3 py-1.5 text-xs">{[v.plate, v.brand, v.model].filter(Boolean).join(" · ")}</span>)}</div></div>}
-    <div>
-      <div className="mb-2 flex items-center gap-2 font-semibold"><ClipboardList className="h-4 w-4" /> Histórico de ordens</div>
-      {loading ? <p className="text-sm text-muted-foreground">Carregando histórico...</p> : history.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma ordem de serviço registrada para este cliente.</p> :
-      <div className="divide-y rounded-xl border bg-card">{history.map(order => <div key={order.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div><p className="font-medium">{order.items?.map(i => i.service?.name).filter(Boolean).join(", ") || "Serviço"}</p><p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")} · {order.vehicle ? [order.vehicle.plate, order.vehicle.brand, order.vehicle.model].filter(Boolean).join(" · ") : "Sem veículo"}</p></div>
-        <div className="flex items-center gap-3"><span className="rounded-full bg-muted px-2.5 py-1 text-xs">{order.status}</span><strong>R$ {Number(order.total).toFixed(2).replace(".", ",")}</strong></div>
-      </div>)}</div>}
-    </div>
-  </div>;
+function ClientesPage(){
+ const [customers,setCustomers]=useState<Customer[]>([]);const [selected,setSelected]=useState<Customer|null>(null);const [vehicles,setVehicles]=useState<Vehicle[]>([]);const [visits,setVisits]=useState<Visit[]>([]);const [query,setQuery]=useState("");const [loading,setLoading]=useState(true);const [detailLoading,setDetailLoading]=useState(false);const [error,setError]=useState("");
+ const load=async()=>{try{setLoading(true);setError("");const id=await getCurrentCompanyId();const r=await supabase.from("customers").select("id,name,phone,email,notes,created_at").eq("company_id",id).order("name");if(r.error)throw r.error;setCustomers((r.data??[]) as Customer[])}catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar os clientes.")}finally{setLoading(false)}};
+ useEffect(()=>{void load()},[]);
+ const filtered=useMemo(()=>customers.filter(c=>{const q=query.toLowerCase().trim();return !q||c.name.toLowerCase().includes(q)||(c.phone??"").replace(/\D/g,"").includes(q.replace(/\D/g,""))}),[customers,query]);
+ const openCustomer=async(c:Customer)=>{try{setSelected(c);setDetailLoading(true);const [v,a]=await Promise.all([supabase.from("vehicles").select("id,plate,brand,model,category").eq("company_id",await getCurrentCompanyId()).eq("customer_id",c.id).order("created_at",{ascending:false}),supabase.from("appointments").select("id,appointment_date,appointment_time,status,total_price,total_duration,source,vehicle_plate").eq("customer_id",c.id).order("appointment_date",{ascending:false}).order("appointment_time",{ascending:false}).limit(30)]);if(v.error)throw v.error;if(a.error)throw a.error;const ids=(a.data??[]).map(x=>x.id);const links=ids.length?await (supabase as any).from("appointment_services").select("appointment_id,service:services(name)").in("appointment_id",ids):{data:[],error:null};if(links.error)throw links.error;const names=new Map<string,string[]>();for(const x of links.data??[])names.set(x.appointment_id,[...(names.get(x.appointment_id)??[]),x.service?.name].filter(Boolean));setVehicles((v.data??[]) as Vehicle[]);setVisits((a.data??[]).map((x:any)=>({...x,total_price:Number(x.total_price??0),services:names.get(x.id)??[]})))}catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar o histórico.")}finally{setDetailLoading(false)}};
+ const spent=visits.reduce((s,v)=>s+(v.status==="cancelled"?0:v.total_price),0);
+ const whatsapp=(phone:string|null)=>{const p=(phone??"").replace(/\D/g,"");if(p.length<8)return;window.open("https://wa.me/"+(p.startsWith("55")?p:"55"+p)," _blank","noopener,noreferrer")};
+ return <div className="mx-auto max-w-6xl space-y-6 pb-10">
+  <div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Relacionamento</p><h1 className="mt-1 text-3xl font-bold">Clientes</h1><p className="text-sm text-muted-foreground">Clientes, veículos e histórico de atendimentos.</p></div>
+  {error&&<div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+  <Card className="rounded-2xl"><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"/><Input className="pl-9" placeholder="Buscar por nome ou WhatsApp..." value={query} onChange={e=>setQuery(e.target.value)}/></div></CardContent></Card>
+  <div className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
+   <Card className="rounded-2xl"><CardContent className="p-0"><div className="border-b px-5 py-4 text-sm font-semibold">{filtered.length} cliente(s)</div>{loading?<p className="p-6 text-sm text-muted-foreground">Carregando...</p>:filtered.length===0?<p className="p-8 text-center text-sm text-muted-foreground">Nenhum cliente encontrado.</p>:<div className="divide-y">{filtered.map(c=><button key={c.id} type="button" onClick={()=>void openCustomer(c)} className={`flex w-full items-center gap-3 p-4 text-left transition hover:bg-muted/50 ${selected?.id===c.id?"bg-primary/5":"""}`}><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><UserRound className="h-4 w-4"/></div><div className="min-w-0 flex-1"><p className="truncate font-semibold">{c.name}</p><p className="truncate text-xs text-muted-foreground">{c.phone||"WhatsApp não informado"}</p></div></button>)}</div>}</CardContent></Card>
+   <Card className="rounded-2xl"><CardContent className="p-5">{!selected?<div className="flex min-h-[360px] flex-col items-center justify-center text-center text-muted-foreground"><UserRound className="mb-3 h-10 w-10"/><p className="font-medium">Selecione um cliente</p><p className="mt-1 text-xs">Veja veículos e histórico de serviços.</p></div>:<div className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-bold">{selected.name}</h2><p className="text-sm text-muted-foreground">{selected.phone||"WhatsApp não informado"}</p></div>{selected.phone&&<Button variant="outline" size="sm" onClick={()=>whatsapp(selected.phone)}><MessageCircle className="mr-2 h-4 w-4"/>WhatsApp</Button>}</div>{detailLoading?<p className="text-sm text-muted-foreground">Carregando histórico...</p>:<><div className="grid grid-cols-3 gap-2"><Stat label="Atendimentos" value={String(visits.filter(v=>v.status!=="cancelled").length)}/><Stat label="Total gasto" value={money(spent)}/><Stat label="Veículos" value={String(vehicles.length)}/></div><div><h3 className="mb-2 flex items-center gap-2 font-semibold"><Car className="h-4 w-4"/>Veículos</h3>{vehicles.length?<div className="grid gap-2 sm:grid-cols-2">{vehicles.map(v=><div key={v.id} className="rounded-xl border p-3"><p className="font-semibold">{v.plate||"Sem placa"}</p><p className="text-xs text-muted-foreground">{[v.brand,v.model,v.category].filter(Boolean).join(" · ")}</p></div>)}</div>:<p className="text-sm text-muted-foreground">Nenhum veículo cadastrado.</p>}</div><div><h3 className="mb-2 flex items-center gap-2 font-semibold"><Clock3 className="h-4 w-4"/>Histórico</h3>{visits.length?<div className="divide-y rounded-xl border">{visits.map(v=><div key={v.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{v.services.join(" + ")||"Serviço"}</p><p className="text-xs text-muted-foreground">{new Date(v.appointment_date+"T12:00:00").toLocaleDateString("pt-BR")} · {v.appointment_time.slice(0,5)} · {v.vehicle_plate||"Sem placa"}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-muted px-2 py-1 text-[11px]">{statusLabel(v.status)}</span><span className="font-semibold">{money(v.total_price)}</span></div></div>)}</div>:<p className="text-sm text-muted-foreground">Nenhum atendimento registrado.</p>}</div></>}</div>}</CardContent></Card>
+  </div>
+ </div>;
 }
-
-function ClientesPage() {
-  return <CrudPage table="customers" title="Clientes" singular="Cliente" description="Cadastre e gerencie os clientes da sua empresa."
-    fields={[{ key: "name", label: "Nome", required: true }, { key: "phone", label: "Telefone" }, { key: "email", label: "E-mail", type: "email" }, { key: "document", label: "Documento" }, { key: "notes", label: "Observações" }]}
-    columns={[{ key: "name", label: "Nome" }, { key: "phone", label: "Telefone" }, { key: "email", label: "E-mail" }, { key: "document", label: "Documento" }]}
-    renderExpandedRow={(row: any) => <CustomerHistory customer={row as Customer} />}
-  />;
-}
+function Stat({label,value}:{label:string;value:string}){return <div className="rounded-xl border bg-muted/20 p-3"><p className="text-[11px] text-muted-foreground">{label}</p><p className="mt-1 text-lg font-bold">{value}</p></div>}
+const money=(n:number)=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const statusLabel=(s:string)=>s==="pending"?"Aguardando":s==="confirmed"?"Em lavagem":s==="completed"?"Pronto":s==="delivered"?"Concluído":"Cancelado";
