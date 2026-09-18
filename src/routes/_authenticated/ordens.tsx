@@ -49,7 +49,7 @@ function OrdensPage() {
       const [appointmentRes, serviceRes, orderRes] = await Promise.all([
         supabase.from("appointments").select("id,customer_id,customer_name,customer_phone,vehicle_id,vehicle_plate,appointment_date,appointment_time,status,notes,service:services(id,name,price),vehicle:vehicles(id,plate,brand,model)").eq("company_id", id).eq("appointment_date", date).order("appointment_time"),
         supabase.from("services").select("id,name,price").eq("company_id", id).eq("active", true).order("name"),
-        supabase.from("service_orders").select("id,customer_id,appointment_id,status,total,created_at").eq("company_id", id).order("created_at", { ascending: false }).limit(30),
+        (supabase as any).from("service_orders").select("id,customer_id,appointment_id,status,total,created_at").eq("company_id", id).order("created_at", { ascending: false }).limit(30),
       ]);
       for (const result of [appointmentRes, serviceRes, orderRes]) if (result.error) throw result.error;
       setAppointments((appointmentRes.data ?? []) as unknown as Appointment[]);
@@ -92,7 +92,7 @@ function OrdensPage() {
       const subtotal = Number(price);
       const discountValue = Math.max(0, Number(discount) || 0);
       const finalTotal = Math.max(0, subtotal - discountValue);
-      const { data: order, error: orderError } = await supabase.from("service_orders").insert({
+      const { data: order, error: orderError } = await (supabase as any).from("service_orders").insert({
         company_id: companyId, appointment_id: selectedAppointment.id, customer_id: selectedAppointment.customer_id,
         vehicle_id: selectedAppointment.vehicle_id, status, subtotal, discount: discountValue, total: finalTotal,
         notes: notes.trim() || null, started_at: new Date().toISOString(),
@@ -102,7 +102,7 @@ function OrdensPage() {
         company_id: companyId, service_order_id: order.id, service_id: serviceId, quantity: 1, unit_price: subtotal, total: subtotal,
       });
       if (itemError) {
-        await supabase.from("service_orders").delete().eq("id", order.id);
+        await (supabase as any).from("service_orders").delete().eq("id", order.id);
         throw itemError;
       }
       const { error: appointmentError } = await supabase.from("appointments").update({ status: "converted" }).eq("id", selectedAppointment.id).eq("company_id", companyId);
