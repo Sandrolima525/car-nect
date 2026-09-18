@@ -25,13 +25,15 @@ type CrudPageProps = {
   fields: Field[];
   columns: { key: string; label: string }[];
   searchKeys?: string[];
+  renderExpandedRow?: (row: Record<string, unknown>) => React.ReactNode;
 };
 
-export function CrudPage({ table, title, description, singular, fields, columns, searchKeys }: CrudPageProps) {
+export function CrudPage({ table, title, description, singular, fields, columns, searchKeys, renderExpandedRow }: CrudPageProps) {
   const [records, setRecords] = useState<Record<string, unknown>[]>([]);
   const [companyId, setCompanyId] = useState<string>();
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -67,6 +69,7 @@ export function CrudPage({ table, title, description, singular, fields, columns,
 
   const openEdit = (record: Record<string, unknown>) => {
     setEditing(record);
+    setExpandedId(null);
     setForm(Object.fromEntries(fields.map((field) => [field.key, String(record[field.key] ?? "")] )));
   };
 
@@ -122,7 +125,7 @@ export function CrudPage({ table, title, description, singular, fields, columns,
       ) : null}
       <Card>
         <CardHeader><div className="relative max-w-sm"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Buscar ${title.toLowerCase()}...`} className="pl-8" /></div></CardHeader>
-        <CardContent className="p-0"><Table><TableHeader><TableRow>{columns.map((column) => <TableHead key={column.key} className="first:pl-4 sm:first:pl-6">{column.label}</TableHead>)}<TableHead className="w-[60px]" /></TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell colSpan={columns.length + 1} className="h-24 text-center text-muted-foreground">Carregando...</TableCell></TableRow> : filtered.length === 0 ? <TableRow><TableCell colSpan={columns.length + 1} className="h-24 text-center text-muted-foreground">Nenhum registro encontrado.</TableCell></TableRow> : filtered.map((record) => <TableRow key={String(record.id)}>{columns.map((column) => <TableCell key={column.key} className="first:pl-4 sm:first:pl-6">{String(record[column.key] ?? "—")}</TableCell>)}<TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => openEdit(record)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem><DropdownMenuItem className="text-destructive" onClick={() => void remove(record.id)}><Trash2 className="mr-2 h-4 w-4" />Excluir</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>)}</TableBody></Table></CardContent>
+        <CardContent className="p-0"><Table><TableHeader><TableRow>{columns.map((column) => <TableHead key={column.key} className="first:pl-4 sm:first:pl-6">{column.label}</TableHead>)}<TableHead className="w-[60px]" /></TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell colSpan={columns.length + 1} className="h-24 text-center text-muted-foreground">Carregando...</TableCell></TableRow> : filtered.length === 0 ? <TableRow><TableCell colSpan={columns.length + 1} className="h-24 text-center text-muted-foreground">Nenhum registro encontrado.</TableCell></TableRow> : filtered.map((record) => <TableRow key={String(record["id"])}>{columns.map((column) => <TableCell key={column.key} className="first:pl-4 sm:first:pl-6">{String(record[column.key] ?? "—")}</TableCell>)}<TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => openEdit(record)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem><DropdownMenuItem onClick={() => renderExpandedRow && setExpandedId(expandedId === String(record["id"]) ? null : String(record["id"]))}>Histórico</DropdownMenuItem><DropdownMenuItem className="text-destructive" onClick={() => void remove(record["id"])}><Trash2 className="mr-2 h-4 w-4" />Excluir</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>{renderExpandedRow && expandedId === String(record["id"]) && <TableRow><TableCell colSpan={columns.length + 1} className="p-0">{renderExpandedRow(record)}</TableCell></TableRow>}</TableBody></Table></CardContent>
       </Card>
     </div>
   );
