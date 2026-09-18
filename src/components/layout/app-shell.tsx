@@ -19,9 +19,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const displayName = profile?.full_name ?? profile?.email ?? "Usuário";
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-sidebar-border px-5 py-5">
+      <div className="border-b border-sidebar-border/70 bg-gradient-to-br from-primary/[0.10] to-transparent px-5 py-6">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"><Waves className="h-5 w-5" /></span>
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-4 ring-primary/10"><Waves className="h-5 w-5" /></span>
           <div className="min-w-0"><p className="text-sm font-bold tracking-tight text-sidebar-foreground">LavaPro</p><p className="text-xs text-sidebar-foreground/55">Gestão automotiva</p></div>
         </div>
       </div>
@@ -61,10 +61,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar lg:block"><div className="sticky top-0 h-screen"><SidebarContent /></div></aside>
+    <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-primary/[0.035]">
+      <aside className="hidden w-64 shrink-0 border-r border-sidebar-border/70 bg-sidebar/95 shadow-xl shadow-black/[0.04] lg:block"><div className="sticky top-0 h-screen"><SidebarContent /></div></aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/70 bg-background/90 px-4 shadow-sm backdrop-blur-xl sm:px-6">
+        <header className="sticky top-0 z-30 flex h-[4.25rem] items-center gap-3 border-b border-border/60 bg-background/80 px-4 shadow-sm backdrop-blur-2xl sm:px-6">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild><Button variant="ghost" size="icon" className="rounded-xl lg:hidden" aria-label="Abrir menu"><Menu className="h-5 w-5" /></Button></SheetTrigger>
             <SheetContent side="left" className="w-72 bg-sidebar p-0"><SheetTitle className="sr-only">Menu de navegação</SheetTitle><SidebarContent onNavigate={() => setMobileOpen(false)} /></SheetContent>
@@ -78,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <DropdownMenuContent align="end" className="w-56"><DropdownMenuLabel><span className="block truncate">{displayName}</span><span className="block text-xs font-normal text-muted-foreground">{profile ? ROLE_LABELS[profile.role] : "—"}</span></DropdownMenuLabel><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => void signOut()}><LogOut className="mr-2 h-4 w-4" />Sair</DropdownMenuItem></DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-7 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
