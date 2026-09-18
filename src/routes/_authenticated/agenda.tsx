@@ -191,6 +191,8 @@ function AgendaPage() {
 
   const save = async () => {
     if (!name.trim() || digits(phone).length < 8 || !serviceIds.length || !date || !time) return setError("Preencha nome, WhatsApp, serviço, data e horário.");
+    const primaryServiceId = serviceIds[0];
+    if (!primaryServiceId) return setError("Selecione pelo menos um serviço.");
     try {
       setSaving(true); setError("");
       let customerId = customers.find(c => digits(c.phone ?? "") === digits(phone))?.id ?? null;
@@ -211,13 +213,13 @@ function AgendaPage() {
       }
 
       if(editingId){
-        const r=await supabase.from("appointments").update({customer_id:customerId,vehicle_id:savedVehicleId,service_id:serviceIds[0],customer_name:name.trim(),customer_phone:phone.trim(),vehicle_plate:plate.trim().toUpperCase()||null,appointment_date:date,appointment_time:time,notes:notes.trim()||null}).eq("id",editingId).eq("company_id",companyId);
+        const r=await supabase.from("appointments").update({customer_id:customerId,vehicle_id:savedVehicleId,service_id:primaryServiceId,customer_name:name.trim(),customer_phone:phone.trim(),vehicle_plate:plate.trim().toUpperCase()||null,appointment_date:date,appointment_time:time,notes:notes.trim()||null}).eq("id",editingId).eq("company_id",companyId);
         if(r.error){if(r.error.code==="23505")throw new Error("Esse horário acabou de ser ocupado. Escolha outro.");throw r.error;}
         const dr=await (supabase as any).from("appointment_services").delete().eq("appointment_id",editingId); if(dr.error)throw dr.error;
         const sr=await (supabase as any).from("appointment_services").insert(selectedServices.map(s=>({appointment_id:editingId,service_id:s.id,price:Number(s.price),duration_minutes:s.estimated_duration??60}))); if(sr.error)throw sr.error;
       }else{
       const r = await supabase.from("appointments").insert({
-        company_id: companyId, customer_id: customerId, vehicle_id: savedVehicleId, service_id: serviceIds[0],
+        company_id: companyId, customer_id: customerId, vehicle_id: savedVehicleId, service_id: primaryServiceId,
         customer_name: name.trim(), customer_phone: phone.trim(), vehicle_plate: plate.trim().toUpperCase() || null,
         appointment_date: date, appointment_time: time, notes: notes.trim() || null, status: "pending",
       }).select("id");
@@ -225,7 +227,8 @@ function AgendaPage() {
         if (r.error.code === "23505") throw new Error("Esse horário acabou de ser ocupado. Escolha outro.");
         throw r.error;
       }
-      if (r.data?.[0]?.id) { const sr = await (supabase as any).from("appointment_services").insert(selectedServices.map(s => ({ appointment_id: r.data[0].id, service_id: s.id, price: Number(s.price), duration_minutes: s.estimated_duration ?? 60 }))); if (sr.error) throw sr.error; }
+      const insertedId = r.data?.[0]?.id;
+      if (insertedId) { const sr = await (supabase as any).from("appointment_services").insert(selectedServices.map(s => ({ appointment_id: insertedId, service_id: s.id, price: Number(s.price), duration_minutes: s.estimated_duration ?? 60 }))); if (sr.error) throw sr.error; }
       }
       setShowForm(false); setEditingId(null); await load();
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar o agendamento."); }
