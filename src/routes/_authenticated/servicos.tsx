@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -8,71 +8,19 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentCompanyId } from "@/services/company";
 
-export const Route = createFileRoute("/_authenticated/servicos")({ component: ServicesPage });
-
-type Service = { id: string; name: string; price: number; estimated_duration: number | null; active: boolean };
-
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const parseMoney = (value: string) => Number(value.trim().replace(/\./g, "").replace(",", "."));
-
-function ServicesPage() {
-  const [companyId, setCompanyId] = useState("");
-  const [services, setServices] = useState<Service[]>([]);
-  const [name, setName] = useState("");
-  const [duration, setDuration] = useState("60");
-  const [price, setPrice] = useState("");
-  const [editing, setEditing] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const load = async () => {
-    try {
-      setLoading(true);
-      const id = companyId || await getCurrentCompanyId();
-      setCompanyId(id);
-      const { data, error: queryError } = await supabase.from("services").select("id,name,price,estimated_duration,active").eq("company_id", id).eq("active", true).order("name");
-      if (queryError) throw queryError;
-      setServices((data ?? []) as Service[]);
-    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar os serviços."); }
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { void load(); }, []);
-
-  const reset = () => { setEditing(null); setName(""); setDuration("60"); setPrice(""); setShowForm(false); };
-  const openNew = () => { setEditing(null); setName(""); setDuration("60"); setPrice(""); setShowForm(true); };
-
-  const save = async () => {
-    if (!name.trim()) return setError("Informe o nome do serviço.");
-    const numericPrice = parseMoney(price);
-    if (!Number.isFinite(numericPrice) || numericPrice < 0) return setError("Informe um valor válido, por exemplo: 35 ou 35,00.");
-    if (!Number(duration) || Number(duration) < 5) return setError("Informe uma duração de pelo menos 5 minutos.");
-    try {
-      setSaving(true); setError("");
-      const payload = { name: name.trim(), price: numericPrice, estimated_duration: Number(duration), active: true };
-      const result = editing
-        ? await supabase.from("services").update(payload).eq("id", editing).eq("company_id", companyId)
-        : await supabase.from("services").insert({ ...payload, company_id: companyId });
-      if (result.error) throw result.error;
-      reset(); await load();
-    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar."); }
-    finally { setSaving(false); }
-  };
-
-  const edit = (service: Service) => { setEditing(service.id); setName(service.name); setDuration(String(service.estimated_duration ?? 60)); setPrice(String(service.price)); setShowForm(true); };
-
-  const remove = async (id: string) => {
-    if (!window.confirm("Remover este serviço?")) return;
-    const { error: mutationError } = await supabase.from("services").update({ active: false }).eq("id", id).eq("company_id", companyId);
-    if (mutationError) setError(mutationError.message); else await load();
-  };
-
-  return <div className="space-y-6 pb-10">
-    <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm backdrop-blur sm:flex-row sm:items-end sm:justify-between sm:p-5"><div><div className="mb-2 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Catálogo</div><h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Serviços</h2><p className="text-sm text-muted-foreground">Cadastre somente o que o sistema precisa para montar a agenda.</p></div><Button onClick={openNew}><Plus className="mr-2 h-4 w-4" />Novo serviço</Button></div>
-    {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-    {showForm && <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-card to-primary/[0.025] shadow-md"><CardHeader className="border-b border-border/50 bg-muted/20"><h3 className="font-semibold">{editing ? "Editar serviço" : "Novo serviço"}</h3></CardHeader><CardContent className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label>Serviço *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Lavagem completa" /></div><div className="space-y-2"><Label>Duração (minutos) *</Label><Input type="number" min="5" step="5" value={duration} onChange={e => setDuration(e.target.value)} /></div><div className="space-y-2"><Label>Valor *</Label><Input inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} placeholder="35,00" /></div><div className="flex gap-2 sm:col-span-3"><Button onClick={() => void save()} disabled={saving}>{saving ? "Salvando..." : "Salvar serviço"}</Button><Button variant="outline" onClick={reset}>Cancelar</Button></div></CardContent></Card>}
-    <Card className="overflow-hidden border-border/60 shadow-md"><CardContent className="p-0">{loading ? <div className="p-6 text-sm text-muted-foreground">Carregando...</div> : services.length === 0 ? <div className="p-6 text-sm text-muted-foreground">Nenhum serviço cadastrado.</div> : <div className="divide-y">{services.map(s => <div key={s.id} className="group flex flex-col gap-3 p-5 transition-all hover:bg-primary/[0.025] hover:shadow-[inset_3px_0_0_var(--color-primary)] sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">{s.name}</p><p className="text-sm text-muted-foreground">{s.estimated_duration ?? 60} minutos</p></div><div className="flex items-center gap-3"><span className="rounded-xl bg-primary/[0.08] px-3 py-1.5 font-bold text-primary">{money(Number(s.price))}</span><Button variant="ghost" size="icon" onClick={() => edit(s)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => void remove(s.id)}><Trash2 className="h-4 w-4" /></Button></div></div>)}</div>}</CardContent></Card>
-  </div>;
+export const Route=createFileRoute("/_authenticated/servicos")({component:ServicosPage});
+type Service={id:string;name:string;description:string|null;price:number;estimated_duration:number|null;category:string|null;vehicle_category:string;active:boolean};
+const vehicleOptions=[["all","Todos"],["Hatch","Hatch"],["Sedan","Sedan"],["SUV/Picape","SUV/Picape"]];
+function ServicosPage(){
+ const [items,setItems]=useState<Service[]>([]);const [editing,setEditing]=useState<string|null>(null);const [name,setName]=useState("");const [description,setDescription]=useState("");const [price,setPrice]=useState("");const [duration,setDuration]=useState("60");const [category,setCategory]=useState("Lavagem");const [vehicle,setVehicle]=useState("all");const [error,setError]=useState("");const [saving,setSaving]=useState(false);
+ const load=async()=>{const id=await getCurrentCompanyId();const r=await supabase.from("services").select("id,name,description,price,estimated_duration,category,vehicle_category,active").eq("company_id",id).order("active",{ascending:false}).order("name");if(r.error)setError(r.error.message);else setItems((r.data??[]) as Service[])};
+ useEffect(()=>{void load()},[]);
+ const clear=()=>{setEditing(null);setName("");setDescription("");setPrice("");setDuration("60");setCategory("Lavagem");setVehicle("all")};
+ const save=async()=>{if(!name.trim())return setError("Informe o nome do serviço.");const id=await getCurrentCompanyId();setSaving(true);setError("");const payload={name:name.trim(),description:description.trim()||null,price:Number(price.replace(",","."))||0,estimated_duration:Math.max(5,Number(duration)||60),category,vehicle_category:vehicle,active:true,updated_at:new Date().toISOString(),company_id:id};const r=editing?await supabase.from("services").update(payload).eq("id",editing):await supabase.from("services").insert(payload);if(r.error)setError(r.error.message);else{clear();await load()}setSaving(false)};
+ const edit=(s:Service)=>{setEditing(s.id);setName(s.name);setDescription(s.description??"");setPrice(String(s.price));setDuration(String(s.estimated_duration??60));setCategory(s.category??"Lavagem");setVehicle(s.vehicle_category??"all")};
+ const remove=async(s:Service)=>{if(!window.confirm(`Excluir ${s.name}? Se já foi usado, prefira desativar.`))return;const r=await supabase.from("services").delete().eq("id",s.id);if(r.error)setError(r.error.message);else void load()};
+ const toggle=async(s:Service)=>{const r=await supabase.from("services").update({active:!s.active,updated_at:new Date().toISOString()}).eq("id",s.id);if(r.error)setError(r.error.message);else void load()};
+ return <div className="mx-auto max-w-6xl space-y-6 pb-10"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Catálogo</p><h1 className="mt-1 text-3xl font-bold">Serviços</h1><p className="text-sm text-muted-foreground">Preços, duração e categoria de cada serviço.</p></div>{error&&<div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+ <div className="grid gap-5 lg:grid-cols-[360px_1fr]"><Card className="rounded-2xl"><CardHeader><h2 className="font-semibold">{editing?"Editar serviço":"Novo serviço"}</h2></CardHeader><CardContent className="space-y-4"><div><Label>Nome</Label><Input className="mt-2" value={name} onChange={e=>setName(e.target.value)} placeholder="Lavagem completa"/></div><div><Label>Descrição</Label><Input className="mt-2" value={description} onChange={e=>setDescription(e.target.value)} placeholder="Inclui lavagem externa..."/></div><div className="grid grid-cols-2 gap-3"><div><Label>Valor</Label><Input className="mt-2" inputMode="decimal" value={price} onChange={e=>setPrice(e.target.value)} placeholder="59,90"/></div><div><Label>Duração (min)</Label><Input className="mt-2" type="number" min="5" value={duration} onChange={e=>setDuration(e.target.value)}/></div></div><div><Label>Categoria</Label><select className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm" value={category} onChange={e=>setCategory(e.target.value)}>{["Lavagem","Adicional","Higienização","Polimento","Detalhamento"].map(x=><option key={x}>{x}</option>)}</select></div><div><Label>Categoria de veículo</Label><select className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm" value={vehicle} onChange={e=>setVehicle(e.target.value)}>{vehicleOptions.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div><div className="flex gap-2"><Button className="flex-1" onClick={()=>void save()} disabled={saving}>{saving?"Salvando...":editing?"Salvar alterações":"Adicionar serviço"}</Button>{editing&&<Button variant="outline" onClick={clear}>Cancelar</Button>}</div></CardContent></Card>
+ <div className="space-y-3">{items.length===0?<Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Nenhum serviço cadastrado.</CardContent></Card>:items.map(s=><Card key={s.id} className={"rounded-2xl "+(!s.active?"opacity-60":"")}><CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">{s.name}</h3><span className="rounded-full bg-muted px-2 py-1 text-[11px]">{s.category||"Serviço"}</span><span className="rounded-full bg-primary/10 px-2 py-1 text-[11px]">{s.vehicle_category==="all"?"Todos":s.vehicle_category}</span></div><p className="mt-1 text-sm text-muted-foreground">{s.description||"Sem descrição"} · {s.estimated_duration??60} min</p></div><div className="flex items-center gap-3"><span className="font-bold">{Number(s.price).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</span><Button size="icon" variant="ghost" onClick={()=>edit(s)}><Pencil/></Button><Button size="sm" variant="outline" onClick={()=>void toggle(s)}>{s.active?"Desativar":"Ativar"}</Button><Button size="icon" variant="ghost" onClick={()=>void remove(s)}><Trash2/></Button></div></CardContent></Card>)}</div></div></div>
 }
