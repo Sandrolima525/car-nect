@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, Clock3, DollarSign, Plus, Users } from "lucide-react";
+import { CalendarDays, Clock3, DollarSign, MessageCircle, Plus, Trash2, Users } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({ component: D
 type Appointment = {
   id: string;
   customer_name: string;
+  customer_phone: string | null;
   appointment_time: string;
   status: string;
   service: { name: string; price: number; estimated_duration: number | null } | null;
@@ -51,6 +52,32 @@ function DashboardPage() {
     .filter((a) => a.status === "completed")
     .reduce((sum, a) => sum + Number(a.service?.price ?? 0), 0);
 
+  const shareReadyOnWhatsApp = (a: Appointment) => {
+    const phone = (a.customer_phone ?? "").replace(/\D/g, "");
+    if (!phone) {
+      setError("Este cliente não possui um WhatsApp cadastrado.");
+      return;
+    }
+    const message = encodeURIComponent(
+      `Olá, ${a.customer_name}! 🚗✨ Seu veículo está pronto e o serviço foi concluído. Pode passar para fazer a retirada. Obrigado por escolher a LavaPro!`
+    );
+    window.open(`https://wa.me/55${phone}?text=${message}`, "_blank", "noopener,noreferrer");
+  };
+
+  const deleteCompleted = async (a: Appointment) => {
+    if (a.status !== "completed") return;
+    const confirmed = window.confirm(`Excluir o agendamento concluído de ${a.customer_name}? Essa ação remove o registro da agenda.`);
+    if (!confirmed) return;
+    try {
+      setError("");
+      const { error: deleteError } = await supabase.from("appointments").delete().eq("id", a.id);
+      if (deleteError) throw deleteError;
+      setAppointments((current) => current.filter((item) => item.id !== a.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível excluir o agendamento.");
+    }
+  };
+
   return (
     <div className="space-y-7">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -86,7 +113,20 @@ function DashboardPage() {
                   <span className="min-w-14 rounded-lg bg-muted px-2 py-1 text-center text-sm font-bold">{a.appointment_time.slice(0, 5)}</span>
                   <div className="min-w-0"><p className="truncate font-medium">{a.customer_name}</p><p className="text-xs text-muted-foreground">{a.service?.name ?? "Serviço"} · {a.service?.estimated_duration ?? 60} min</p></div>
                 </div>
-                <div className="flex items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs ${a.status === "completed" ? "bg-green-100 text-green-700" : a.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`}>{a.status === "completed" ? "Concluído" : a.status === "cancelled" ? "Cancelado" : "Agendado"}</span><span className="hidden font-semibold sm:block">{money(Number(a.service?.price ?? 0))}</span></div>
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-xs ${a.status === "completed" ? "bg-green-100 text-green-700" : a.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`}>{a.status === "completed" ? "Concluído" : a.status === "cancelled" ? "Cancelado" : "Agendado"}</span>
+                  <span className="hidden font-semibold sm:block">{money(Number(a.service?.price ?? 0))}</span>
+                  {a.status === "completed" && (
+                    <>
+                      <Button type="button" variant="outline" size="icon" className="h-8 w-8 border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800" onClick={() => shareReadyOnWhatsApp(a)} title={a.customer_phone ? "Avisar cliente pelo WhatsApp" : "Cliente sem WhatsApp cadastrado"}>
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => void deleteCompleted(a)} title="Excluir serviço concluído">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}</div>}
         </CardContent>
