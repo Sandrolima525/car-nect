@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_services: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          price: number
+          service_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          price?: number
+          service_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          price?: number
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_services_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           appointment_date: string
@@ -94,10 +136,52 @@ export type Database = {
           },
         ]
       }
+      booking_blocks: {
+        Row: {
+          block_date: string
+          company_id: string
+          created_at: string
+          end_time: string
+          id: string
+          reason: string | null
+          start_time: string
+        }
+        Insert: {
+          block_date: string
+          company_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          reason?: string | null
+          start_time: string
+        }
+        Update: {
+          block_date?: string
+          company_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          reason?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_blocks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           active: boolean
           address: string | null
+          booking_interval_minutes: number
+          booking_min_advance_minutes: number
+          brand_colors: Json
+          business_hours: Json
           city: string | null
           created_at: string
           document: string | null
@@ -112,11 +196,16 @@ export type Database = {
           state: string | null
           trade_name: string | null
           updated_at: string
+          whatsapp_number: string | null
           zip_code: string | null
         }
         Insert: {
           active?: boolean
           address?: string | null
+          booking_interval_minutes?: number
+          booking_min_advance_minutes?: number
+          brand_colors?: Json
+          business_hours?: Json
           city?: string | null
           created_at?: string
           document?: string | null
@@ -131,11 +220,16 @@ export type Database = {
           state?: string | null
           trade_name?: string | null
           updated_at?: string
+          whatsapp_number?: string | null
           zip_code?: string | null
         }
         Update: {
           active?: boolean
           address?: string | null
+          booking_interval_minutes?: number
+          booking_min_advance_minutes?: number
+          brand_colors?: Json
+          business_hours?: Json
           city?: string | null
           created_at?: string
           document?: string | null
@@ -150,6 +244,7 @@ export type Database = {
           state?: string | null
           trade_name?: string | null
           updated_at?: string
+          whatsapp_number?: string | null
           zip_code?: string | null
         }
         Relationships: []
@@ -486,6 +581,7 @@ export type Database = {
       }
       service_orders: {
         Row: {
+          appointment_id: string | null
           company_id: string
           completed_at: string | null
           created_at: string
@@ -503,6 +599,7 @@ export type Database = {
           vehicle_id: string | null
         }
         Insert: {
+          appointment_id?: string | null
           company_id: string
           completed_at?: string | null
           created_at?: string
@@ -520,6 +617,7 @@ export type Database = {
           vehicle_id?: string | null
         }
         Update: {
+          appointment_id?: string | null
           company_id?: string
           completed_at?: string | null
           created_at?: string
@@ -537,6 +635,13 @@ export type Database = {
           vehicle_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "service_orders_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "service_orders_company_id_fkey"
             columns: ["company_id"]
@@ -787,6 +892,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_company_logo: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
+      create_public_booking: {
+        Args: {
+          _date: string
+          _name: string
+          _notes?: string
+          _phone: string
+          _service_id: string
+          _slug: string
+          _time: string
+          _vehicle_brand?: string
+          _vehicle_model?: string
+          _vehicle_plate?: string
+        }
+        Returns: string
+      }
+      create_public_booking_multi: {
+        Args: {
+          _date: string
+          _name: string
+          _notes?: string
+          _phone: string
+          _service_ids: string[]
+          _slug: string
+          _time: string
+          _vehicle_brand?: string
+          _vehicle_model?: string
+          _vehicle_plate?: string
+        }
+        Returns: string
+      }
+      get_public_available_slots: {
+        Args: { _date: string; _service_id: string; _slug: string }
+        Returns: {
+          slot: string
+        }[]
+      }
+      get_public_available_slots_multi: {
+        Args: { _date: string; _service_ids: string[]; _slug: string }
+        Returns: {
+          slot: string
+        }[]
+      }
       is_platform_admin: { Args: never; Returns: boolean }
       is_workshop_member: { Args: { p_workshop_id: string }; Returns: boolean }
     }
