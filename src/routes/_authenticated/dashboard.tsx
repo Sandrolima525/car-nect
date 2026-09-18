@@ -40,7 +40,7 @@ function DashboardPage() {
     const ids = rows.map(r => r.id);
     const { data: links, error: linksError } = await (supabase as any).from("appointment_services").select("appointment_id,service_id,price,duration_minutes").in("appointment_id", ids);
     if (linksError) throw linksError;
-    const serviceIds = [...new Set((links ?? []).map(x => x.service_id))];
+    const serviceIds = [...new Set((links ?? []).map((x: { service_id: string }) => x.service_id))];
     const { data: services, error: servicesError } = serviceIds.length ? await supabase.from("services").select("id,name,price,estimated_duration").in("id", serviceIds) : { data: [], error: null };
     if (servicesError) throw servicesError;
     const serviceMap = new Map((services ?? []).map(s => [s.id, s as Service]));
