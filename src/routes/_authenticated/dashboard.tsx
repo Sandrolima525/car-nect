@@ -57,10 +57,10 @@ function DashboardPage() {
             <div className="rounded-xl border border-border bg-card p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Ações rápidas</p>
               <div className="mt-3 flex gap-2">
-                <Link to="/_authenticated/ordens" className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:opacity-90">
+                <Link to="/ordens" className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:opacity-90">
                   <Plus className="h-4 w-4" /> Nova ordem
                 </Link>
-                <Link to="/_authenticated/clientes" className="inline-flex h-9 items-center justify-center rounded-lg border border-border px-3 text-sm font-medium hover:bg-muted">
+                <Link to="/clientes" className="inline-flex h-9 items-center justify-center rounded-lg border border-border px-3 text-sm font-medium hover:bg-muted">
                   Clientes
                 </Link>
               </div>
@@ -174,7 +174,7 @@ function DashboardOverview() {
               <div><h3 className="font-semibold">Veículos cadastrados</h3><p className="text-xs text-muted-foreground">Frota atendida pela empresa</p></div>
             </div>
             <p className="mt-5 text-3xl font-semibold">{metrics.data.vehicles}</p>
-            <Link to="/_authenticated/veiculos" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Ver veículos <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/veiculos" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Ver veículos <ArrowRight className="h-4 w-4" /></Link>
           </div>
         </section>
       )}
