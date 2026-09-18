@@ -24,7 +24,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="border-b border-sidebar-border/70 bg-gradient-to-br from-primary/[0.10] to-transparent px-5 py-6">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-4 ring-primary/10"><Waves className="h-5 w-5" /></span>
-          <div className="min-w-0"><p className="text-sm font-bold tracking-tight text-sidebar-foreground">LavaPro</p><p className="text-xs text-sidebar-foreground/55">Gestão automotiva</p></div>
+          <div className="min-w-0"><p className="truncate text-sm font-bold tracking-tight text-sidebar-foreground">{company?.name ?? "Empresa"}</p><p className="text-xs text-sidebar-foreground/55">Gestão automotiva</p></div>
         </div>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
@@ -87,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <SheetContent side="left" className="w-72 bg-sidebar p-0"><SheetTitle className="sr-only">Menu de navegação</SheetTitle><SidebarContent onNavigate={() => setMobileOpen(false)} /></SheetContent>
           </Sheet>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-bold tracking-tight text-foreground sm:text-lg">{current?.label ?? "LavaPro"}</h1>
+            <h1 className="truncate text-base font-bold tracking-tight text-foreground sm:text-lg">{current?.label ?? company?.name ?? "Empresa"}</h1>
             {current && current.to !== "/dashboard" && <Breadcrumb className="hidden sm:block"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink asChild><Link to="/dashboard">Início</Link></BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{current.label}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>}
           </div>
       <DropdownMenu>
