@@ -22,9 +22,18 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-sidebar-border/70 bg-gradient-to-br from-primary/[0.10] to-transparent px-5 py-6">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-4 ring-primary/10"><Waves className="h-5 w-5" /></span>
-          <div className="min-w-0"><p className="truncate text-sm font-bold tracking-tight text-sidebar-foreground">{company?.name ?? "Empresa"}</p><p className="text-xs text-sidebar-foreground/55">Gestão automotiva</p></div>
+        <div className="flex flex-col items-center text-center">
+          <div className="mb-3 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-primary/20 bg-background shadow-lg ring-4 ring-primary/10">
+            {company?.logo_url ? (
+              <img src={company.logo_url} alt={company?.name ?? "Logo da empresa"} className="h-full w-full object-cover" />
+            ) : (
+              <Waves className="h-7 w-7 text-primary" />
+            )}
+          </div>
+          <div className="min-w-0 max-w-full">
+            <p className="truncate text-sm font-bold tracking-tight text-sidebar-foreground">{company?.name ?? "Empresa"}</p>
+            <p className="text-xs text-sidebar-foreground/55">Gestão automotiva</p>
+          </div>
         </div>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
