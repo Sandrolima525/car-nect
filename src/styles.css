@@ -88,11 +88,18 @@
   html { scroll-behavior: smooth; }
   body {
     margin: 0;
-    background: var(--color-background);
+    background: radial-gradient(circle at 8% -5%, color-mix(in oklch, var(--primary) 8%, transparent), transparent 28rem), radial-gradient(circle at 95% 0%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 24rem), var(--color-background);
     color: var(--color-foreground);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
   }
   button, a { -webkit-tap-highlight-color: transparent; }
   ::selection { background: color-mix(in oklch, var(--primary) 22%, transparent); color: var(--foreground); }
+  input[type="date"], input[type="time"], input[type="number"] { color-scheme: light; }
+  input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator { opacity: .6; cursor: pointer; filter: saturate(.7); }
+  input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--foreground) 16%, transparent); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: color-mix(in oklch, var(--primary) 55%, transparent); }
 }
