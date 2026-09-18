@@ -27,6 +27,7 @@ function DashboardPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [periodAppointments, setPeriodAppointments] = useState<Appointment[]>([]);
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
+  const [periodView, setPeriodView] = useState<"week" | "month" | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -45,8 +46,8 @@ function DashboardPage() {
     for (const link of links ?? []) linkMap.set(link.appointment_id, [...(linkMap.get(link.appointment_id) ?? []), link]);
     return rows.map(row => {
       const linked = linkMap.get(row.id) ?? [];
-      const rowServices = linked.map(x => serviceMap.get(x.service_id)).filter(Boolean) as Service[];
       const fallback = row.service as Service | null;
+      const rowServices = linked.map(x => serviceMap.get(x.service_id)).filter(Boolean) as Service[];
       return { ...row, services: rowServices.length ? rowServices : fallback ? [fallback] : [], totalPrice: linked.length ? linked.reduce((s,x)=>s+Number(x.price),0) : Number(fallback?.price ?? 0), totalDuration: linked.length ? linked.reduce((s,x)=>s+Number(x.duration_minutes ?? 60),0) : Number(fallback?.estimated_duration ?? 60) };
     });
   };
@@ -59,7 +60,7 @@ function DashboardPage() {
       const [day, periodRows, futureRows] = await Promise.all([
         supabase.from("appointments").select(baseSelect).eq("company_id", companyId).eq("appointment_date", selectedDate).order("appointment_time"),
         supabase.from("appointments").select(baseSelect).eq("company_id", companyId).gte("appointment_date", period.weekStart).lte("appointment_date", period.monthEnd).order("appointment_date").order("appointment_time"),
-        supabase.from("appointments").select(baseSelect).eq("company_id", companyId).gt("appointment_date", today()).neq("status","cancelled").order("appointment_date").order("appointment_time").limit(5),
+        supabase.from("appointments").select(baseSelect).eq("company_id", companyId).gt("appointment_date", today()).neq("status","cancelled").order("appointment_date").order("appointment_time").limit(6),
       ]);
       if (day.error) throw day.error; if (periodRows.error) throw periodRows.error; if (futureRows.error) throw futureRows.error;
       const [dayData, periodData, futureData] = await Promise.all([enrich(day.data ?? []), enrich(periodRows.data ?? []), enrich(futureRows.data ?? [])]);
@@ -76,6 +77,9 @@ function DashboardPage() {
   const monthAppointments = periodAppointments.filter(a => a.appointment_date >= period.monthStart && a.appointment_date <= period.monthEnd);
   const weekRevenue = weekAppointments.filter(a => a.status === "completed").reduce((s,a) => s+a.totalPrice,0);
   const monthRevenue = monthAppointments.filter(a => a.status === "completed").reduce((s,a) => s+a.totalPrice,0);
+  const selectedPeriod = periodView === "week" ? weekAppointments : periodView === "month" ? monthAppointments : [];
+  const selectedPeriodRevenue = periodView === "week" ? weekRevenue : monthRevenue;
+  const selectedPeriodLabel = periodView === "week" ? "Esta semana" : "Este mês";
 
   const shareReadyOnWhatsApp = (a: Appointment) => {
     const raw = (a.customer_phone ?? "").replace(/\D/g,"");
@@ -88,19 +92,50 @@ function DashboardPage() {
   const deleteCompleted = async (a: Appointment) => {
     if (a.status !== "completed" || !window.confirm(`Excluir o agendamento concluído de ${a.customer_name}?`)) return;
     const { error: deleteError } = await supabase.from("appointments").delete().eq("id",a.id);
-    if (deleteError) setError(deleteError.message); else setAppointments(current => current.filter(x=>x.id!==a.id));
+    if (deleteError) setError(deleteError.message); else { setAppointments(current => current.filter(x=>x.id!==a.id)); setPeriodAppointments(current => current.filter(x=>x.id!==a.id)); }
   };
 
   const displayDate = new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
 
-  return <div className="space-y-7">
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><div className="mb-2 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Visão geral</div><h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Dashboard</h2><p className="text-sm text-muted-foreground capitalize">{displayDate}</p></div><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" size="sm" onClick={()=>setSelectedDate(today())}>Hoje</Button><Button type="button" variant={selectedDate===shiftDate(today(),1)?"default":"outline"} size="sm" onClick={()=>setSelectedDate(shiftDate(today(),1))}>Amanhã</Button><input aria-label="Escolher outro dia" type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="h-9 rounded-md border bg-background px-3 text-sm"/><Button asChild><Link to="/agenda"><Plus className="mr-2 h-4 w-4"/>Novo agendamento</Link></Button></div></div>
-    {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-    <div className="grid gap-4 sm:grid-cols-3"><Metric icon={CalendarDays} label="Agendamentos" value={loading?"—":String(appointments.length)}/><Metric icon={Users} label="Clientes no dia" value={loading?"—":String(customers)}/><Metric icon={DollarSign} label="Faturamento concluído" value={loading?"—":money(revenue)}/></div>
-    <div className="grid gap-4 sm:grid-cols-2"><PeriodCard label="Esta semana" value={loading?"—":`${weekAppointments.length} agendamentos`} detail={loading?"":money(weekRevenue)} onClick={()=>setSelectedDate(period.weekStart)}/><PeriodCard label="Este mês" value={loading?"—":`${monthAppointments.length} agendamentos`} detail={loading?"":money(monthRevenue)} onClick={()=>setSelectedDate(period.monthStart)}/></div>
-    <Card><CardHeader><div className="flex items-center justify-between"><div><h3 className="font-semibold">Agenda do dia</h3><p className="text-sm text-muted-foreground">Serviços múltiplos e valores totais aparecem aqui.</p></div><Clock3 className="h-5 w-5 text-muted-foreground"/></div></CardHeader><CardContent className="p-0">{loading?<div className="p-6 text-sm text-muted-foreground">Carregando...</div>:appointments.length===0?<div className="p-6 text-sm text-muted-foreground">Nenhum agendamento para este dia.</div>:<div className="divide-y">{appointments.map(a=><div key={a.id} className="flex items-center justify-between gap-4 p-4"><div className="flex min-w-0 items-center gap-3"><span className="min-w-14 rounded-lg bg-muted px-2 py-1 text-center text-sm font-bold">{a.appointment_time.slice(0,5)}</span><div className="min-w-0"><p className="truncate font-medium">{a.customer_name}</p><p className="text-xs text-muted-foreground truncate">{a.services.map(s=>s.name).join(" + ") || "Serviço"} · {a.totalDuration} min</p></div></div><div className="flex items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs ${a.status==="completed"?"bg-green-100 text-green-700":a.status==="cancelled"?"bg-red-100 text-red-700":"bg-muted text-muted-foreground"}`}>{a.status==="completed"?"Concluído":a.status==="cancelled"?"Cancelado":a.status==="confirmed"?"Confirmado":"Pendente"}</span><span className="hidden font-semibold sm:block">{money(a.totalPrice)}</span>{a.status==="completed"&&<><Button type="button" variant="outline" size="icon" className="h-8 w-8 border-green-200 text-green-700" onClick={()=>shareReadyOnWhatsApp(a)} title="Avisar cliente pelo WhatsApp"><MessageCircle className="h-4 w-4"/></Button><Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={()=>void deleteCompleted(a)} title="Excluir serviço concluído"><Trash2 className="h-4 w-4"/></Button></>}</div></div>)}</div>}</CardContent></Card>
-    <Card><CardHeader><div className="flex items-center justify-between gap-3"><div><h3 className="font-semibold">Próximos agendamentos</h3><p className="text-sm text-muted-foreground">Agenda interna e link público.</p></div><Button variant="outline" size="sm" asChild><Link to="/agenda">Ver agenda completa</Link></Button></div></CardHeader><CardContent className="p-0">{upcoming.length===0?<div className="p-6 text-sm text-muted-foreground">Nenhum agendamento futuro.</div>:<div className="divide-y">{upcoming.map(a=><div key={a.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 items-center gap-3"><div className="rounded-xl bg-primary/10 px-3 py-2 text-center"><p className="text-xs font-semibold text-primary">{new Date(a.appointment_date+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}</p><p className="text-sm font-bold">{a.appointment_time.slice(0,5)}</p></div><div className="min-w-0"><p className="truncate font-medium">{a.customer_name}</p><p className="text-xs text-muted-foreground truncate">{a.services.map(s=>s.name).join(" + ") || "Serviço"} · {money(a.totalPrice)}</p></div></div><Button variant="outline" size="sm" asChild><Link to="/agenda">Abrir agenda</Link></Button></div>)}</div>}</CardContent></Card>
+  return <div className="mx-auto max-w-6xl space-y-5 pb-8">
+    <div className="flex items-center justify-between gap-3">
+      <div><p className="text-xs font-semibold uppercase tracking-wider text-primary">LavaPro</p><h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Olá 👋</h2><p className="text-sm text-muted-foreground capitalize">{displayDate}</p></div>
+      <Button asChild size="icon" className="h-11 w-11 rounded-full shadow-sm" title="Novo agendamento"><Link to="/agenda"><Plus className="h-5 w-5"/></Link></Button>
+    </div>
+
+    {error && <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+
+    <div className="grid grid-cols-2 gap-3">
+      <Metric icon={CalendarDays} label="Hoje" value={loading?"—":String(appointments.length)} compact />
+      <Metric icon={DollarSign} label="Concluído" value={loading?"—":money(revenue)} compact />
+    </div>
+
+    <Card className="overflow-hidden rounded-2xl">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-2">
+          <Button variant="outline" size="sm" onClick={()=>setSelectedDate(today())}>Hoje</Button>
+          <Button variant="ghost" size="sm" onClick={()=>setSelectedDate(shiftDate(selectedDate,-1))}>‹</Button>
+          <input aria-label="Escolher data" type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-2 text-center text-sm font-medium"/>
+          <Button variant="ghost" size="sm" onClick={()=>setSelectedDate(shiftDate(selectedDate,1))}>›</Button>
+          <Button variant="outline" size="sm" onClick={()=>setSelectedDate(shiftDate(today(),1))}>Amanhã</Button>
+        </div>
+      </CardContent>
+    </Card>
+
+    <div className="grid grid-cols-2 gap-3">
+      <button type="button" onClick={()=>setPeriodView(periodView==="week"?null:"week")} className="text-left">
+        <Card className={`rounded-2xl transition ${periodView==="week"?"border-primary ring-1 ring-primary/20":""}`}><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Semana</span><span className="text-xs text-primary">{periodView==="week"?"Fechar":"Ver"}</span></div><p className="mt-2 text-xl font-bold">{loading?"—":weekAppointments.length}</p><p className="text-xs text-muted-foreground">agendamentos · {money(weekRevenue)}</p></CardContent></Card>
+      </button>
+      <button type="button" onClick={()=>setPeriodView(periodView==="month"?null:"month")} className="text-left">
+        <Card className={`rounded-2xl transition ${periodView==="month"?"border-primary ring-1 ring-primary/20":""}`}><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Mês</span><span className="text-xs text-primary">{periodView==="month"?"Fechar":"Ver"}</span></div><p className="mt-2 text-xl font-bold">{loading?"—":monthAppointments.length}</p><p className="text-xs text-muted-foreground">agendamentos · {money(monthRevenue)}</p></CardContent></Card>
+      </button>
+    </div>
+
+    {periodView && <Card className="rounded-2xl"><CardHeader className="pb-3"><div className="flex items-center justify-between"><div><h3 className="font-semibold">{selectedPeriodLabel}</h3><p className="text-xs text-muted-foreground">{selectedPeriod.length} agendamentos · {money(selectedPeriodRevenue)} concluído</p></div><Button variant="ghost" size="sm" onClick={()=>setPeriodView(null)}>Fechar</Button></div></CardHeader><CardContent className="p-0"><div className="divide-y">{selectedPeriod.length===0?<p className="p-5 text-sm text-muted-foreground">Nenhum agendamento neste período.</p>:selectedPeriod.slice(0,12).map(a=><div key={a.id} className="flex items-center justify-between gap-3 p-4"><div className="min-w-0"><p className="text-xs text-muted-foreground">{new Date(a.appointment_date+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} · {a.appointment_time.slice(0,5)}</p><p className="truncate font-medium">{a.customer_name}</p><p className="truncate text-xs text-muted-foreground">{a.services.map(s=>s.name).join(" + ")}</p></div><span className="shrink-0 text-sm font-semibold">{money(a.totalPrice)}</span></div>)}</div></CardContent></Card>}
+
+    <Card className="rounded-2xl"><CardHeader className="pb-3"><div className="flex items-center justify-between"><div><h3 className="font-semibold">{selectedDate===today()?"Agenda de hoje":"Agenda do dia"}</h3><p className="text-xs text-muted-foreground">{appointments.length ? `${appointments.length} agendamento${appointments.length===1?"":"s"}` : "Nenhum agendamento"}</p></div><Button variant="ghost" size="sm" asChild><Link to="/agenda">Ver tudo</Link></Button></div></CardHeader><CardContent className="p-0">{loading?<div className="p-5 text-sm text-muted-foreground">Carregando...</div>:appointments.length===0?<div className="p-8 text-center"><CalendarDays className="mx-auto mb-2 h-8 w-8 text-muted-foreground"/><p className="text-sm text-muted-foreground">Nada agendado para este dia.</p><Button variant="outline" size="sm" className="mt-3" asChild><Link to="/agenda">Criar agendamento</Link></Button></div>:<div className="divide-y">{appointments.map(a=><div key={a.id} className="p-4"><div className="flex items-center gap-3"><span className="w-14 shrink-0 rounded-xl bg-muted px-2 py-2 text-center text-sm font-bold">{a.appointment_time.slice(0,5)}</span><div className="min-w-0 flex-1"><p className="truncate font-medium">{a.customer_name}</p><p className="truncate text-xs text-muted-foreground">{a.services.map(s=>s.name).join(" + ")||"Serviço"}</p></div><span className={`rounded-full px-2 py-1 text-[11px] ${a.status==="completed"?"bg-green-100 text-green-700":a.status==="cancelled"?"bg-red-100 text-red-700":a.status==="confirmed"?"bg-primary/10 text-primary":"bg-muted text-muted-foreground"}`}>{a.status==="completed"?"Concluído":a.status==="cancelled"?"Cancelado":a.status==="confirmed"?"Confirmado":"Pendente"}</span></div><div className="mt-3 flex items-center justify-between pl-[68px]"><span className="text-sm font-semibold">{money(a.totalPrice)}</span>{a.status==="completed"&&<div className="flex gap-1"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={()=>shareReadyOnWhatsApp(a)}><MessageCircle className="h-4 w-4"/></Button><Button variant="ghost" size="icon" className="h-8 w-8" onClick={()=>void deleteCompleted(a)}><Trash2 className="h-4 w-4"/></Button></div>}</div></div>)}</div>}</CardContent></Card>
+
+    <Card className="rounded-2xl"><CardHeader className="pb-3"><div className="flex items-center justify-between"><div><h3 className="font-semibold">Próximos</h3><p className="text-xs text-muted-foreground">Seus próximos clientes</p></div><Button variant="ghost" size="sm" asChild><Link to="/agenda">Ver tudo</Link></Button></div></CardHeader><CardContent className="p-0">{upcoming.length===0?<p className="p-5 text-sm text-muted-foreground">Nenhum agendamento futuro.</p>:<div className="divide-y">{upcoming.map(a=><div key={a.id} className="flex items-center gap-3 p-4"><div className="w-14 shrink-0 rounded-xl bg-primary/10 px-2 py-2 text-center"><p className="text-[11px] font-semibold text-primary">{new Date(a.appointment_date+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}</p><p className="text-sm font-bold">{a.appointment_time.slice(0,5)}</p></div><div className="min-w-0 flex-1"><p className="truncate font-medium">{a.customer_name}</p><p className="truncate text-xs text-muted-foreground">{a.services.map(s=>s.name).join(" + ")}</p></div><span className="shrink-0 text-sm font-semibold">{money(a.totalPrice)}</span></div>)}</div>}</CardContent></Card>
   </div>;
 }
-function Metric({icon:Icon,label,value}:{icon:typeof CalendarDays;label:string;value:string}){return <Card><CardContent className="flex items-center gap-4 p-5"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Icon className="h-5 w-5"/></div><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div></CardContent></Card>}
-function PeriodCard({label,value,detail,onClick}:{label:string;value:string;detail:string;onClick:()=>void}){return <button type="button" onClick={onClick} className="text-left"><Card className="h-full hover:border-primary/40"><CardContent className="p-5"><div className="flex items-center justify-between"><p className="text-sm font-semibold">{label}</p><span className="text-xs text-primary">Ver período</span></div><p className="mt-2 text-xl font-bold">{value}</p><p className="mt-1 text-sm text-muted-foreground">Concluído: {detail}</p></CardContent></Card></button>}
+function Metric({icon:Icon,label,value,compact=false}:{icon:typeof CalendarDays;label:string;value:string;compact?:boolean}){return <Card className="rounded-2xl"><CardContent className={compact?"p-4":"p-5"}><div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-4 w-4"/></div><div className="min-w-0"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-0.5 truncate text-xl font-bold">{value}</p></div></div></CardContent></Card>}
