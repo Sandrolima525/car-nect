@@ -193,7 +193,7 @@ function AgendaPage() {
         if (r.error.code === "23505") throw new Error("Esse horário acabou de ser ocupado. Escolha outro.");
         throw r.error;
       }
-      if (r.data?.[0]?.id) { const sr = await supabase.from("appointment_services").insert(selectedServices.map(s => ({ appointment_id: r.data[0].id, service_id: s.id, price: Number(s.price), duration_minutes: s.estimated_duration ?? 60 }))); if (sr.error) throw sr.error; }
+      if (r.data?.[0]?.id) { const sr = await (supabase as any).from("appointment_services").insert(selectedServices.map(s => ({ appointment_id: r.data[0].id, service_id: s.id, price: Number(s.price), duration_minutes: s.estimated_duration ?? 60 }))); if (sr.error) throw sr.error; }
       setShowForm(false); await load();
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar o agendamento."); }
     finally { setSaving(false); }
