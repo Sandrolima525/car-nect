@@ -22,17 +22,6 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
 });
 
-const NEXT_MODULES = [
-  "Clientes",
-  "Veículos",
-  "Serviços",
-  "Ordens de serviço",
-  "Agenda",
-  "Funcionários",
-  "Financeiro",
-  "Relatórios",
-];
-
 function DashboardPage() {
   const { profile, company, loading } = useAuth();
 
@@ -76,22 +65,6 @@ function DashboardPage() {
           <DashboardRecentOrdersSection />
         </>
       )}
-
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Próximos módulos
-        </h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {NEXT_MODULES.map((item) => (
-            <span
-              key={item}
-              className="rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground"
-            >
-              {item}
-            </span>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }
