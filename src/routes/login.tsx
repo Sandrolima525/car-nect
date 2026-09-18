@@ -58,6 +58,7 @@ function LoginPage() {
         <Button className="w-full rounded-xl" size="lg" onClick={()=>void submit()} disabled={loading}>{loading?"Aguarde...":mode==="login"?"Entrar":"Criar conta"}</Button>
         <div className="relative py-1"><div className="border-t"/><span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">ou</span></div>
         <Button variant="outline" className="w-full rounded-xl" size="lg" onClick={()=>void google()} disabled={loading}><Chrome className="mr-2 h-4 w-4"/>Continuar com Google</Button>
+        {mode === "login" && <Link to="/recuperar-senha" className="block text-center text-sm font-semibold text-primary hover:underline">Esqueci minha senha</Link>}
         <button type="button" className="w-full text-sm font-semibold text-primary hover:underline" onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");setMessage("");}}>{mode==="login"?"Ainda não tenho conta":"Já tenho uma conta"}</button>
       </CardContent>
     </Card>
