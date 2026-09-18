@@ -195,7 +195,7 @@ function AuthPage() {
         </form>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Acesso somente para usuários cadastrados pela administração.
+          Ao criar a conta você poderá cadastrar sua empresa no primeiro acesso.
         </p>
       </div>
     </div>
