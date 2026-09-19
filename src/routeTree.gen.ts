@@ -23,6 +23,9 @@ import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authen
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
 import { Route as AuthenticatedServicosRouteImport } from './routes/_authenticated/servicos'
+import { Route as AuthenticatedVeiculosRouteImport } from './routes/_authenticated/veiculos'
+import { Route as AuthenticatedOrdensRouteImport } from './routes/_authenticated/ordens'
+import { Route as AuthenticatedEquipeRouteImport } from './routes/_authenticated/equipe'
 import { Route as AgendarSlugRouteImport } from './routes/agendar/$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -95,6 +98,9 @@ const AuthenticatedServicosRoute = AuthenticatedServicosRouteImport.update({
   path: '/servicos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedVeiculosRoute = AuthenticatedVeiculosRouteImport.update({ id: '/veiculos', path: '/veiculos', getParentRoute: () => AuthenticatedRouteRoute } as any)
+const AuthenticatedOrdensRoute = AuthenticatedOrdensRouteImport.update({ id: '/ordens', path: '/ordens', getParentRoute: () => AuthenticatedRouteRoute } as any)
+const AuthenticatedEquipeRoute = AuthenticatedEquipeRouteImport.update({ id: '/equipe', path: '/equipe', getParentRoute: () => AuthenticatedRouteRoute } as any)
 const AgendarSlugRoute = AgendarSlugRouteImport.update({
   id: '/agendar/$slug',
   path: '/agendar/$slug',
@@ -115,6 +121,9 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/servicos': typeof AuthenticatedServicosRoute
+  '/veiculos': typeof AuthenticatedVeiculosRoute
+  '/ordens': typeof AuthenticatedOrdensRoute
+  '/equipe': typeof AuthenticatedEquipeRoute
   '/agendar/$slug': typeof AgendarSlugRoute
 }
 export interface FileRoutesByTo {
@@ -149,6 +158,9 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/financeiro': typeof AuthenticatedFinanceiroRoute
   '/_authenticated/servicos': typeof AuthenticatedServicosRoute
+  '/_authenticated/veiculos': typeof AuthenticatedVeiculosRoute
+  '/_authenticated/ordens': typeof AuthenticatedOrdensRoute
+  '/_authenticated/equipe': typeof AuthenticatedEquipeRoute
   '/agendar/$slug': typeof AgendarSlugRoute
 }
 export interface FileRouteTypes {
@@ -167,6 +179,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/financeiro'
     | '/servicos'
+    | '/veiculos'
+    | '/ordens'
+    | '/equipe'
     | '/agendar/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -200,6 +215,9 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/financeiro'
     | '/_authenticated/servicos'
+    | '/_authenticated/veiculos'
+    | '/_authenticated/ordens'
+    | '/_authenticated/equipe'
     | '/agendar/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -332,6 +350,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFinanceiroRoute: typeof AuthenticatedFinanceiroRoute
   AuthenticatedServicosRoute: typeof AuthenticatedServicosRoute
+  AuthenticatedVeiculosRoute: typeof AuthenticatedVeiculosRoute
+  AuthenticatedOrdensRoute: typeof AuthenticatedOrdensRoute
+  AuthenticatedEquipeRoute: typeof AuthenticatedEquipeRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -341,6 +362,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFinanceiroRoute: AuthenticatedFinanceiroRoute,
   AuthenticatedServicosRoute: AuthenticatedServicosRoute,
+  AuthenticatedVeiculosRoute: AuthenticatedVeiculosRoute,
+  AuthenticatedOrdensRoute: AuthenticatedOrdensRoute,
+  AuthenticatedEquipeRoute: AuthenticatedEquipeRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
