@@ -782,6 +782,7 @@ export type Database = {
           mileage: number | null
           model: string | null
           nfc_tag_uid: string | null
+          notes: string | null
           plate: string | null
           public_token: string
           updated_at: string
@@ -799,6 +800,7 @@ export type Database = {
           mileage?: number | null
           model?: string | null
           nfc_tag_uid?: string | null
+          notes?: string | null
           plate?: string | null
           public_token?: string
           updated_at?: string
@@ -816,6 +818,7 @@ export type Database = {
           mileage?: number | null
           model?: string | null
           nfc_tag_uid?: string | null
+          notes?: string | null
           plate?: string | null
           public_token?: string
           updated_at?: string
