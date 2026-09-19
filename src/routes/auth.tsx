@@ -10,12 +10,12 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Entrar — LavaPro Gestão" },
+      { title: "Entrar — Car-Nect" },
       {
         name: "description",
         content: "Acesse o painel de gestão do seu lava-jato ou centro de estética automotiva.",
       },
-      { property: "og:title", content: "Entrar — LavaPro Gestão" },
+      { property: "og:title", content: "Entrar — Car-Nect" },
       {
         property: "og:description",
         content: "Acesse o painel de gestão do seu lava-jato ou centro de estética automotiva.",
@@ -97,7 +97,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">LavaPro</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Car-Nect</p>
           <h1 className="mt-2 text-2xl font-semibold text-foreground">Gestão para lava-jatos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {mode === "login"
