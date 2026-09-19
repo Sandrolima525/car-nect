@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, CarFront, CheckCircle2, Droplets, Gauge, ListOrdered, Plus, Timer, TrendingUp } from "lucide-react";
+import { Activity, CarFront, CheckCircle2, Clock3, Droplets, Gauge, ListOrdered, Plus, Sparkles, Timer, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
