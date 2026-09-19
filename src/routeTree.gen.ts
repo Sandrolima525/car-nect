@@ -26,6 +26,7 @@ import { Route as AuthenticatedServicosRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedVeiculosRouteImport } from './routes/_authenticated/veiculos'
 import { Route as AuthenticatedOrdensRouteImport } from './routes/_authenticated/ordens'
 import { Route as AuthenticatedEquipeRouteImport } from './routes/_authenticated/equipe'
+import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AgendarSlugRouteImport } from './routes/agendar/$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -101,6 +102,7 @@ const AuthenticatedServicosRoute = AuthenticatedServicosRouteImport.update({
 const AuthenticatedVeiculosRoute = AuthenticatedVeiculosRouteImport.update({ id: '/veiculos', path: '/veiculos', getParentRoute: () => AuthenticatedRouteRoute } as any)
 const AuthenticatedOrdensRoute = AuthenticatedOrdensRouteImport.update({ id: '/ordens', path: '/ordens', getParentRoute: () => AuthenticatedRouteRoute } as any)
 const AuthenticatedEquipeRoute = AuthenticatedEquipeRouteImport.update({ id: '/equipe', path: '/equipe', getParentRoute: () => AuthenticatedRouteRoute } as any)
+const AuthenticatedRelatoriosRoute = AuthenticatedRelatoriosRouteImport.update({ id: '/relatorios', path: '/relatorios', getParentRoute: () => AuthenticatedRouteRoute } as any)
 const AgendarSlugRoute = AgendarSlugRouteImport.update({
   id: '/agendar/$slug',
   path: '/agendar/$slug',
@@ -161,6 +163,7 @@ export interface FileRoutesById {
   '/_authenticated/veiculos': typeof AuthenticatedVeiculosRoute
   '/_authenticated/ordens': typeof AuthenticatedOrdensRoute
   '/_authenticated/equipe': typeof AuthenticatedEquipeRoute
+  '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/agendar/$slug': typeof AgendarSlugRoute
 }
 export interface FileRouteTypes {
@@ -182,6 +185,7 @@ export interface FileRouteTypes {
     | '/veiculos'
     | '/ordens'
     | '/equipe'
+    | '/relatorios'
     | '/agendar/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -218,6 +222,7 @@ export interface FileRouteTypes {
     | '/_authenticated/veiculos'
     | '/_authenticated/ordens'
     | '/_authenticated/equipe'
+    | '/_authenticated/relatorios'
     | '/agendar/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -319,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/relatorios': {
+      id: '/_authenticated/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof AuthenticatedRelatoriosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/financeiro': {
       id: '/_authenticated/financeiro'
       path: '/financeiro'
@@ -353,6 +365,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedVeiculosRoute: typeof AuthenticatedVeiculosRoute
   AuthenticatedOrdensRoute: typeof AuthenticatedOrdensRoute
   AuthenticatedEquipeRoute: typeof AuthenticatedEquipeRoute
+  AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -365,6 +378,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedVeiculosRoute: AuthenticatedVeiculosRoute,
   AuthenticatedOrdensRoute: AuthenticatedOrdensRoute,
   AuthenticatedEquipeRoute: AuthenticatedEquipeRoute,
+  AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
