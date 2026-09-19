@@ -18,7 +18,7 @@ const money=(n:number)=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL
 const statuses=[{key:"pending",label:"Aguardando",icon:Clock3},{key:"confirmed",label:"Em lavagem",icon:Droplets},{key:"completed",label:"Pronto",icon:Check},{key:"delivered",label:"Concluído",icon:CarFront}] as const;
 
 function AgendaPage(){
- const [date,setDate]=useState(today());const [companyName,setCompanyName]=useState("empresa");const [items,setItems]=useState<Appointment[]>([]);const [services,setServices]=useState<Service[]>([]);const [capacity,setCapacity]=useState(2);const [slug,setSlug]=useState("lavapro");const [loading,setLoading]=useState(true);const [error,setError]=useState("");const [open,setOpen]=useState(false);const [saving,setSaving]=useState(false);
+ const [date,setDate]=useState(today());const [companyName,setCompanyName]=useState("sua empresa");const [items,setItems]=useState<Appointment[]>([]);const [services,setServices]=useState<Service[]>([]);const [capacity,setCapacity]=useState(2);const [slug,setSlug]=useState("");const [loading,setLoading]=useState(true);const [error,setError]=useState("");const [open,setOpen]=useState(false);const [saving,setSaving]=useState(false);
  const [name,setName]=useState("");const [phone,setPhone]=useState("");const [category,setCategory]=useState("Hatch");const [plate,setPlate]=useState("");const [brand,setBrand]=useState("");const [model,setModel]=useState("");const [serviceIds,setServiceIds]=useState<string[]>([]);const [walkinTime,setWalkinTime]=useState("");const [slots,setSlots]=useState<string[]>([]);const [notes,setNotes]=useState("");
  const load=async()=>{
   try{setLoading(true);setError("");const companyId=await getCurrentCompanyId();
@@ -26,7 +26,7 @@ function AgendaPage(){
     supabase.from("companies").select("name,public_booking_slug,simultaneous_capacity").eq("id",companyId).maybeSingle(),
     supabase.from("services").select("id,name,price,estimated_duration,category,vehicle_category").eq("company_id",companyId).eq("active",true).order("category").order("name")
    ]);
-   if(companyRes.error)throw companyRes.error;if(serviceRes.error)throw serviceRes.error;setCompanyName(companyRes.data?.name??"empresa");setSlug(companyRes.data?.public_booking_slug??"");setCapacity(Math.max(1,companyRes.data?.simultaneous_capacity??2));setServices((serviceRes.data??[]) as Service[]);
+   if(companyRes.error)throw companyRes.error;if(serviceRes.error)throw serviceRes.error;setCompanyName(companyRes.data?.name??"sua empresa");setSlug(companyRes.data?.public_booking_slug??"");setCapacity(Math.max(1,companyRes.data?.simultaneous_capacity??2));setServices((serviceRes.data??[]) as Service[]);
    const r=await supabase.from("appointments").select("id,customer_name,customer_phone,vehicle_plate,appointment_time,status,total_price,total_duration,service:services(id,name)").eq("company_id",companyId).eq("appointment_date",date).neq("status","cancelled").order("appointment_time");
    if(r.error)throw r.error;const rows=r.data??[];const ids=rows.map(x=>x.id);const links=ids.length?await (supabase as any).from("appointment_services").select("appointment_id,service_id,price,duration_minutes,service:services(id,name)").in("appointment_id",ids):{data:[],error:null};if(links.error)throw links.error;
    const grouped=new Map<string,any[]>();for(const x of links.data??[])grouped.set(x.appointment_id,[...(grouped.get(x.appointment_id)??[]),x]);
