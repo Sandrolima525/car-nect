@@ -1,4 +1,4 @@
-import { CalendarDays, CarFront, CircleDollarSign, ClipboardList, LayoutDashboard, Settings, ShieldCheck, Sparkles, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, CalendarDays, CarFront, CircleDollarSign, ClipboardList, LayoutDashboard, Settings, ShieldCheck, Sparkles, Users, type LucideIcon } from "lucide-react";
 
 export type NavItem = {
   label: string;
@@ -17,6 +17,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Ordens de serviço", to: "/ordens", icon: ClipboardList, ready: true, description: "Atendimentos e execução." },
   { label: "Equipe", to: "/equipe", icon: ShieldCheck, ready: true, description: "Usuários e permissões." },
   { label: "Financeiro", to: "/financeiro", icon: CircleDollarSign, ready: true, description: "Faturamento e serviços concluídos." },
+  { label: "Relatórios", to: "/relatorios", icon: BarChart3, ready: true, description: "Indicadores e análise do negócio." },
   { label: "Configurações", to: "/configuracoes", icon: Settings, ready: true, description: "Empresa e agenda pública." },
 ];
 
