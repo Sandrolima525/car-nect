@@ -10,6 +10,7 @@ export const Route=createFileRoute("/_authenticated/equipe")({component:EquipePa
 type Profile={id:string;user_id:string;full_name:string|null;email:string|null;role:"owner"|"admin"|"manager"|"employee";active:boolean};
 const labels:Record<Profile["role"],string>={owner:"Proprietário",admin:"Administrador",manager:"Gerente",employee:"Atendente"};
 function EquipePage(){
+ const [canManage,setCanManage]=useState(false);
  const [items,setItems]=useState<Profile[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState("");
  const load=async()=>{try{setLoading(true);const company=await getCurrentCompanyId();const me=await supabase.auth.getUser();const mr=me.data.user?await supabase.from("profiles").select("role").eq("company_id",company).eq("user_id",me.data.user.id).maybeSingle():{data:null,error:null};if(mr.error)throw mr.error;setCanManage(mr.data?.role==="owner"||mr.data?.role==="admin");const r=await supabase.from("profiles").select("id,user_id,full_name,email,role,active").eq("company_id",company).order("created_at");if(r.error)throw r.error;setItems((r.data??[]) as Profile[])}catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar a equipe.")}finally{setLoading(false)}};
  useEffect(()=>{void load()},[]);
