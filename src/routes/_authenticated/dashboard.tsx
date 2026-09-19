@@ -64,7 +64,7 @@ function DashboardPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [companyName, setCompanyName] = useState("LavaPro");
+  const [companyName, setCompanyName] = useState("Car-Nect");
   const [maxCapacity, setMaxCapacity] = useState(2);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
