@@ -207,6 +207,10 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/financeiro'
     | '/servicos'
+    | '/veiculos'
+    | '/ordens'
+    | '/equipe'
+    | '/relatorios'
     | '/agendar/$slug'
   id:
     | '__root__'
