@@ -120,9 +120,17 @@ function AgendaPage() {
       const id = companyId || await getCurrentCompanyId();
       setCompanyId(id);
 
-      const [companyRes, servicesRes, appointmentsRes, blocksRes, customersRes] = await Promise.all([
-        supabase.from("companies").select("name,public_booking_slug,business_hours").eq("id", id).maybeSingle(),
-        supabase.from("services").select("id,name,price,estimated_duration,vehicle_category").eq("company_id", id).eq("active", true).order("name"),
+      const companyRes = await supabase.from("companies").select("name,public_booking_slug,business_hours,booking_interval_minutes,simultaneous_capacity").eq("id", id).maybeSingle();
+      const servicesRes = await supabase.from("services").select("id,name,price,estimated_duration,vehicle_category,active").eq("company_id", id).eq("active", true).order("name");
+      if (companyRes.error) throw companyRes.error;
+      if (servicesRes.error) throw servicesRes.error;
+
+      setCompanyName(companyRes.data?.name ?? "Sua empresa");
+      setBusinessHours((companyRes.data?.business_hours ?? {}) as Record<string, BusinessHour>);
+      setBookingSlug(companyRes.data?.public_booking_slug ?? "");
+      setServices((servicesRes.data ?? []) as Service[]);
+
+      const [appointmentsRes, blocksRes, customersRes] = await Promise.all([
         supabase.from("appointments")
           .select("id,customer_id,customer_name,customer_phone,vehicle_plate,appointment_date,appointment_time,status,total_price,total_duration,source")
           .eq("company_id", id).eq("appointment_date", date).neq("status", "cancelled").order("appointment_time"),
@@ -134,19 +142,12 @@ function AgendaPage() {
           .eq("company_id", id).order("name"),
       ]);
 
-      if (companyRes.error) throw companyRes.error;
-      if (servicesRes.error) throw servicesRes.error;
       if (appointmentsRes.error) throw appointmentsRes.error;
       if (blocksRes.error) throw blocksRes.error;
       if (customersRes.error) throw customersRes.error;
 
       setCustomers((customersRes.data ?? []) as CustomerSuggestion[]);
-
-      setCompanyName(companyRes.data?.name ?? "Sua empresa");
-      setBusinessHours((companyRes.data?.business_hours ?? {}) as Record<string, BusinessHour>);
-      setBookingSlug(companyRes.data?.public_booking_slug ?? "");
       setBlocks((blocksRes.data ?? []) as BookingBlock[]);
-      setServices((servicesRes.data ?? []) as Service[]);
 
       const rows = appointmentsRes.data ?? [];
       const ids = rows.map((row) => row.id);
@@ -265,21 +266,49 @@ function AgendaPage() {
   };
 
   useEffect(() => {
-    if (!open || !serviceIds.length || !bookingSlug) {
+    if (!open || !serviceIds.length) {
       setSlots([]);
       setTime("");
       return;
     }
-    void (async () => {
-      const result = await (supabase as any).rpc("get_public_available_slots_multi", {
-        _slug: bookingSlug,
-        _date: date,
-        _service_ids: serviceIds,
-      });
-      if (result.error) setError(result.error.message);
-      else setSlots((result.data ?? []).map((row: { slot: string }) => row.slot.slice(0, 5)));
-    })();
-  }, [open, serviceIds, date, bookingSlug]);
+
+    const hours = businessHours[dayKey(new Date(date + "T12:00:00"))];
+    if (!hours?.enabled) {
+      setSlots([]);
+      setTime("");
+      return;
+    }
+
+    const duration = serviceIds.reduce((sum, id) => sum + Number(services.find((service) => service.id === id)?.estimated_duration ?? 60), 0);
+    const interval = 15;
+    const capacity = 2;
+    const toMinutes = (value: string) => {
+      const [h, m] = value.slice(0, 5).split(":").map(Number);
+      return h * 60 + m;
+    };
+    const formatTime = (minutes: number) => String(Math.floor(minutes / 60)).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
+    const start = toMinutes(hours.open);
+    const end = toMinutes(hours.close);
+    const dateBlocks = blocks.filter((block) => block.block_date === date);
+    const available: string[] = [];
+
+    for (let startMinute = start; startMinute + duration <= end; startMinute += interval) {
+      const finish = startMinute + duration;
+      const overlapsBlock = dateBlocks.some((block) => startMinute < toMinutes(block.end_time) && finish > toMinutes(block.start_time));
+      if (overlapsBlock) continue;
+
+      const overlappingAppointments = items.filter((item) => {
+        const appointmentStart = toMinutes(item.appointment_time);
+        const appointmentFinish = appointmentStart + Number(item.total_duration || 0);
+        return startMinute < appointmentFinish && finish > appointmentStart;
+      }).length;
+
+      if (overlappingAppointments < capacity) available.push(formatTime(startMinute));
+    }
+
+    setSlots(available);
+    if (time && !available.includes(time)) setTime("");
+  }, [open, serviceIds, date, businessHours, services, blocks, items, time]);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
