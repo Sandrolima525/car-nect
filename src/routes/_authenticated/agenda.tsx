@@ -317,28 +317,18 @@ function AgendaPage() {
           <p className="text-sm capitalize text-muted-foreground">{new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-          <div className="flex h-11 w-full items-center overflow-hidden rounded-xl border bg-background shadow-sm sm:w-auto">
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-11 rounded-none border-r px-4 font-semibold hover:bg-muted"
-              onClick={() => setDate(today())}
-            >
-              Hoje
-            </Button>
-            <div className="relative flex h-11 min-w-28 flex-1 items-center justify-center px-3 sm:min-w-32 sm:flex-none" title="Selecionar data">
-              <CalendarDays className="mr-2 h-4 w-4 shrink-0 text-primary" />
-              <span className="text-sm font-semibold capitalize">
-                {new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "")}
-              </span>
-              <input
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-                aria-label="Selecionar data da agenda"
-                className="absolute inset-0 cursor-pointer opacity-0"
-              />
-            </div>
+          <div className="relative flex h-11 w-full items-center justify-center overflow-hidden rounded-xl border bg-background px-4 shadow-sm sm:w-auto sm:min-w-40" title="Selecionar data">
+            <CalendarDays className="mr-2 h-4 w-4 shrink-0 text-primary" />
+            <span className="text-sm font-semibold capitalize">
+              {new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "")}
+            </span>
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              aria-label="Selecionar data da agenda"
+              className="absolute inset-0 cursor-pointer opacity-0"
+            />
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex">
             <Button variant="outline" className="h-11 rounded-xl" onClick={openBlockDialog}>
