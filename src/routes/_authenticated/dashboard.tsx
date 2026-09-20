@@ -51,11 +51,22 @@ function DashboardPage() {
         supabase.from("services").select("id", { count: "exact", head: true }).eq("company_id", id).eq("active", true),
       ]);
       if (appointments.error) throw appointments.error;
-      if (customerResult.error) throw customerResult.error;
-      if (serviceResult.error) throw serviceResult.error;
+
       setItems((appointments.data ?? []).map((item) => ({ ...item, total_price: Number(item.total_price ?? 0) })));
-      setCustomers(customerResult.count ?? 0);
-      setServicesCount(serviceResult.count ?? 0);
+
+      if (customerResult.error) {
+        setCustomers(0);
+        console.warn("Não foi possível carregar a contagem de clientes no dashboard:", customerResult.error.message);
+      } else {
+        setCustomers(customerResult.count ?? 0);
+      }
+
+      if (serviceResult.error) {
+        setServicesCount(0);
+        console.warn("Não foi possível carregar a contagem de serviços no dashboard:", serviceResult.error.message);
+      } else {
+        setServicesCount(serviceResult.count ?? 0);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar o dashboard.");
     } finally {
