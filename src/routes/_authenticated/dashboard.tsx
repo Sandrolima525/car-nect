@@ -104,7 +104,7 @@ function DashboardPage() {
     <div className="mx-auto max-w-7xl space-y-4 pb-6 sm:space-y-6 sm:pb-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><TrendingUp className="h-4 w-4" />Visão financeira</div><h1 className="mt-1 text-3xl font-bold tracking-tight">Dashboard</h1><p className="text-sm text-muted-foreground">Acompanhe faturamento, agenda e crescimento em um só lugar.</p></div>
-        <div className="grid grid-cols-[40px_minmax(0,1fr)_40px] gap-2 sm:flex sm:flex-wrap"><Button variant="outline" size="icon" className="h-10 w-10" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button><div className="flex h-10 min-w-0 items-center justify-center rounded-xl border bg-background px-2 text-center text-xs font-semibold capitalize sm:px-3 sm:text-sm">{new Date(month + "-15T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div><Button variant="outline" size="icon" className="h-10 w-10" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button><Button asChild className="col-span-3 w-full sm:col-span-1 sm:w-auto"><Link to="/agenda"><Plus className="mr-2 h-4 w-4" />Agendar</Link></Button></div>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button><div className="flex h-10 items-center rounded-xl border bg-background px-3 text-sm font-semibold">{new Date(month + "-15T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div><Button variant="outline" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button><Button asChild><Link to="/agenda"><Plus className="mr-2 h-4 w-4" />Agendar</Link></Button></div>
       </header>
 
       {error && <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
@@ -121,7 +121,7 @@ function DashboardPage() {
           <CardContent className="p-5">
             <div className="mb-6 flex items-center justify-between"><div><h2 className="font-bold">Faturamento por dia</h2><p className="text-xs text-muted-foreground">Somente atendimentos concluídos</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{money(billed)}</span></div>
             <div className="flex h-56 items-end gap-1 overflow-x-auto pb-5">
-              {days.map((day) => <div key={day.date} className="group flex h-full min-w-[22px] flex-1 flex-col justify-end sm:min-w-0"><div className="relative flex-1"><div className="absolute bottom-0 left-0 right-0 rounded-t-md bg-primary/70 transition-all group-hover:bg-primary" style={{ height: Math.max(day.revenue ? 6 : 1, (day.revenue / maxDay) * 100) + "%" }} title={day.day + " · " + money(day.revenue)} /></div><span className="mt-2 text-center text-[9px] text-muted-foreground">{day.day}</span></div>)}
+              {days.map((day) => <div key={day.date} className="group flex h-full min-w-[14px] flex-1 flex-col justify-end"><div className="relative flex-1"><div className="absolute bottom-0 left-0 right-0 rounded-t-md bg-primary/70 transition-all group-hover:bg-primary" style={{ height: Math.max(day.revenue ? 6 : 1, (day.revenue / maxDay) * 100) + "%" }} title={day.day + " · " + money(day.revenue)} /></div><span className="mt-2 text-center text-[9px] text-muted-foreground">{day.day}</span></div>)}
             </div>
           </CardContent>
         </Card>
@@ -135,7 +135,7 @@ function DashboardPage() {
               <Line label="Agendamentos online" value={String(online)} />
               <Line label="Ticket médio realizado" value={finished.length ? money(billed / finished.length) : money(0)} />
             </div>
-            <Button variant="outline" className="mt-4 w-full sm:mt-6" asChild><Link to="/configuracoes">Configurar agenda pública</Link></Button>
+            <Button variant="outline" className="mt-6 w-full" asChild><Link to="/configuracoes">Configurar agenda pública</Link></Button>
           </CardContent>
         </Card>
       </div>
@@ -165,7 +165,7 @@ function DashboardPage() {
 }
 
 function Kpi({ icon: Icon, label, value, helper }: { icon: typeof DollarSign; label: string; value: string; helper: string }) {
-  return <Card className="rounded-2xl border-border/60 shadow-sm"><CardContent className="p-4 sm:p-5"><div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p><div className="rounded-xl bg-primary/10 p-2 text-primary"><Icon className="h-4 w-4" /></div></div><p className="mt-4 text-2xl font-black tracking-tight">{value}</p><p className="mt-1 text-xs text-muted-foreground">{helper}</p></CardContent></Card>;
+  return <Card className="rounded-2xl border-border/60 shadow-sm"><CardContent className="p-5"><div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p><div className="rounded-xl bg-primary/10 p-2 text-primary"><Icon className="h-4 w-4" /></div></div><p className="mt-4 text-2xl font-black tracking-tight">{value}</p><p className="mt-1 text-xs text-muted-foreground">{helper}</p></CardContent></Card>;
 }
-function Line({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-border/60 bg-muted/20 p-3 sm:flex sm:items-center sm:justify-between sm:rounded-none sm:border-0 sm:border-b sm:bg-transparent sm:px-0 sm:pb-3 sm:text-sm last:sm:border-0 last:sm:pb-0"><span className="block text-[11px] leading-tight text-muted-foreground sm:inline sm:text-sm">{label}</span><strong className="mt-1 block text-base sm:mt-0 sm:inline">{value}</strong></div>; }
+function Line({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between border-b border-border/60 pb-3 text-sm last:border-0 last:pb-0"><span className="text-muted-foreground">{label}</span><strong>{value}</strong></div>; }
 function Insight({ icon: Icon, text }: { icon: typeof DollarSign; text: string }) { return <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3 text-sm"><Icon className="h-4 w-4 shrink-0 text-primary" /><span>{text}</span></div>; }
