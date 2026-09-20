@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MessageCircle, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
+import { CalendarDays, Clock3, LockKeyhole, MessageCircle, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,6 +18,14 @@ type Service = {
   price: number;
   estimated_duration: number | null;
   vehicle_category: string;
+};
+
+type BookingBlock = {
+  id: string;
+  block_date: string;
+  start_time: string;
+  end_time: string;
+  reason: string | null;
 };
 
 type Appointment = {
@@ -58,6 +66,13 @@ function AgendaPage() {
   const [companyId, setCompanyId] = useState("");
   const [companyName, setCompanyName] = useState("Sua empresa");
   const [bookingSlug, setBookingSlug] = useState("");
+  const [blocks, setBlocks] = useState<BookingBlock[]>([]);
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockMode, setBlockMode] = useState<"time" | "day">("time");
+  const [blockStart, setBlockStart] = useState("12:00");
+  const [blockEnd, setBlockEnd] = useState("13:00");
+  const [blockReason, setBlockReason] = useState("");
+  const [savingBlock, setSavingBlock] = useState(false);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -77,20 +92,25 @@ function AgendaPage() {
       const id = companyId || await getCurrentCompanyId();
       setCompanyId(id);
 
-      const [companyRes, servicesRes, appointmentsRes] = await Promise.all([
+      const [companyRes, servicesRes, appointmentsRes, blocksRes] = await Promise.all([
         supabase.from("companies").select("name,public_booking_slug").eq("id", id).maybeSingle(),
         supabase.from("services").select("id,name,price,estimated_duration,vehicle_category").eq("company_id", id).eq("active", true).order("name"),
         supabase.from("appointments")
           .select("id,customer_id,customer_name,customer_phone,vehicle_plate,appointment_date,appointment_time,status,total_price,total_duration,source")
           .eq("company_id", id).eq("appointment_date", date).neq("status", "cancelled").order("appointment_time"),
+        supabase.from("booking_blocks")
+          .select("id,block_date,start_time,end_time,reason")
+          .eq("company_id", id).eq("block_date", date).order("start_time"),
       ]);
 
       if (companyRes.error) throw companyRes.error;
       if (servicesRes.error) throw servicesRes.error;
       if (appointmentsRes.error) throw appointmentsRes.error;
+      if (blocksRes.error) throw blocksRes.error;
 
       setCompanyName(companyRes.data?.name ?? "Sua empresa");
       setBookingSlug(companyRes.data?.public_booking_slug ?? "");
+      setBlocks((blocksRes.data ?? []) as BookingBlock[]);
       setServices((servicesRes.data ?? []) as Service[]);
 
       const rows = appointmentsRes.data ?? [];
@@ -222,6 +242,49 @@ function AgendaPage() {
     if (result.error) setError(result.error.message); else void load();
   };
 
+  const openBlockDialog = () => {
+    setError("");
+    setBlockMode("time");
+    setBlockStart("12:00");
+    setBlockEnd("13:00");
+    setBlockReason("");
+    setBlockOpen(true);
+  };
+
+  const saveBlock = async () => {
+    const start = blockMode === "day" ? "00:00" : blockStart;
+    const end = blockMode === "day" ? "23:59:59" : blockEnd;
+    if (blockMode === "time" && start >= end) {
+      setError("O horário final precisa ser maior que o inicial.");
+      return;
+    }
+    try {
+      setSavingBlock(true);
+      setError("");
+      const result = await supabase.from("booking_blocks").insert({
+        company_id: companyId,
+        block_date: date,
+        start_time: start,
+        end_time: end,
+        reason: blockReason.trim() || (blockMode === "day" ? "Dia bloqueado" : "Horário bloqueado"),
+      });
+      if (result.error) throw result.error;
+      setBlockOpen(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível bloquear o horário.");
+    } finally {
+      setSavingBlock(false);
+    }
+  };
+
+  const removeBlock = async (block: BookingBlock) => {
+    if (!window.confirm("Remover este bloqueio?")) return;
+    const result = await supabase.from("booking_blocks").delete().eq("id", block.id);
+    if (result.error) setError(result.error.message);
+    else void load();
+  };
+
   const cancel = async (item: Appointment) => {
     if (!window.confirm("Cancelar este agendamento?")) return;
     const result = await supabase.from("appointments").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", item.id);
@@ -274,12 +337,17 @@ function AgendaPage() {
               />
             </div>
           </div>
-          <Button
-            className="h-11 rounded-xl"
-            onClick={() => { setError(""); setOpen(true); }}
-          >
-            <Plus className="mr-2 h-4 w-4" />Novo agendamento
-          </Button>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <Button variant="outline" className="h-11 rounded-xl" onClick={openBlockDialog}>
+              <LockKeyhole className="mr-2 h-4 w-4" />Bloquear
+            </Button>
+            <Button
+              className="h-11 rounded-xl"
+              onClick={() => { setError(""); setOpen(true); }}
+            >
+              <Plus className="mr-2 h-4 w-4" />Novo agendamento
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -290,6 +358,34 @@ function AgendaPage() {
         <Summary label="Valor previsto" value={money(revenue)} />
         <Summary label="Origem online" value={String(items.filter((item) => item.source === "online").length)} />
       </div>
+
+      {blocks.length > 0 && (
+        <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 font-semibold"><LockKeyhole className="h-4 w-4 text-amber-600" />Horários bloqueados</div>
+                <p className="mt-1 text-xs text-muted-foreground">Esses períodos não ficam disponíveis para novos agendamentos.</p>
+              </div>
+              <Button variant="outline" size="sm" className="rounded-lg" onClick={openBlockDialog}>Novo bloqueio</Button>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {blocks.map((block) => {
+                const fullDay = block.start_time === "00:00:00" && block.end_time.startsWith("23:59");
+                return (
+                  <div key={block.id} className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-background p-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">{fullDay ? "Dia inteiro" : block.start_time.slice(0, 5) + " — " + block.end_time.slice(0, 5)}</p>
+                      <p className="truncate text-xs text-muted-foreground">{block.reason || "Sem motivo informado"}</p>
+                    </div>
+                    <Button variant="ghost" size="icon" className="shrink-0" onClick={() => void removeBlock(block)} aria-label="Remover bloqueio"><X className="h-4 w-4" /></Button>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
         <div className="flex flex-col gap-3 border-b bg-muted/20 p-4 lg:flex-row lg:items-center">
@@ -332,6 +428,30 @@ function AgendaPage() {
         <span>Agenda presencial e agenda externa usam os mesmos horários, serviços e clientes.</span>
         {bookingSlug && <Link className="font-semibold text-primary" to={"/agendar/" + bookingSlug}>Abrir agenda do cliente</Link>}
       </div>
+
+      <Dialog open={blockOpen} onOpenChange={setBlockOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Bloquear agenda</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-xl bg-muted/30 p-3 text-sm">
+              <p className="font-semibold">{new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</p>
+              <p className="mt-1 text-xs text-muted-foreground">O bloqueio vale somente para esta data.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setBlockMode("time")} className={`rounded-xl border p-3 text-sm font-semibold ${blockMode === "time" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>Horário</button>
+              <button type="button" onClick={() => setBlockMode("day")} className={`rounded-xl border p-3 text-sm font-semibold ${blockMode === "day" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>Dia inteiro</button>
+            </div>
+            {blockMode === "time" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Início</Label><Input className="mt-2" type="time" value={blockStart} onChange={(e) => setBlockStart(e.target.value)} /></div>
+                <div><Label>Fim</Label><Input className="mt-2" type="time" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} /></div>
+              </div>
+            )}
+            <div><Label>Motivo</Label><Input className="mt-2" value={blockReason} onChange={(e) => setBlockReason(e.target.value)} placeholder="Ex.: imprevisto, manutenção, almoço..." /></div>
+            <Button className="w-full" onClick={() => void saveBlock()} disabled={savingBlock}>{savingBlock ? "Bloqueando..." : blockMode === "day" ? "Bloquear dia" : "Bloquear horário"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) resetForm(); }}>
         <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
