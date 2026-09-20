@@ -84,13 +84,14 @@ function AuthPage() {
       return;
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (signInError) {
       setError("E-mail ou senha inválidos.");
       return;
     }
-    navigate({ to: "/dashboard", replace: true });
+    const role = signInData.user ? await supabase.from("user_roles").select("role").eq("user_id", signInData.user.id).maybeSingle() : null;
+    navigate({ to: role?.data?.role === "admin" ? "/admin" : "/dashboard", replace: true });
   }
 
   return (
