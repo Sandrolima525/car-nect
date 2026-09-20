@@ -6,10 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentCompanyId } from "@/services/company";
 
-export const Route = createFileRoute("/_authenticated/dashboard")({
-  ssr: false,
-  component: DashboardPage,
-});
+export const Route = createFileRoute("/_authenticated/dashboard")({ component: DashboardPage });
 
 type Appointment = {
   id: string;
@@ -22,22 +19,16 @@ type Appointment = {
   source: string;
 };
 
-const localIsoDate = (date = new Date()) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return year + "-" + month + "-" + day;
-};
 const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const iso = (date: Date) => date.toLocaleDateString("en-CA");
 
 function DashboardPage() {
-  const initialDate = localIsoDate();
   const [companyId, setCompanyId] = useState("");
   const [periodMode, setPeriodMode] = useState<"daily" | "weekly" | "monthly">("daily");
-  const [periodStart, setPeriodStart] = useState(initialDate);
-  const [periodEnd, setPeriodEnd] = useState(initialDate);
+  const [periodStart, setPeriodStart] = useState(() => iso(new Date()));
+  const [periodEnd, setPeriodEnd] = useState(() => iso(new Date()));
   const [showTodayRevenue, setShowTodayRevenue] = useState(false);
-  const [selectedRevenueDate, setSelectedRevenueDate] = useState(initialDate);
+  const [selectedRevenueDate, setSelectedRevenueDate] = useState(() => iso(new Date()));
   const [showRevenueDatePicker, setShowRevenueDatePicker] = useState(false);
   const [items, setItems] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState(0);
@@ -47,8 +38,7 @@ function DashboardPage() {
 
   const load = async () => {
     try {
-      setLoading(true);
-      setError("");
+      setLoading(true); setError("");
       const id = companyId || await getCurrentCompanyId();
       setCompanyId(id);
       const orderedDates = [periodStart, selectedRevenueDate, periodEnd].sort();
@@ -80,7 +70,7 @@ function DashboardPage() {
   const billed = finished.reduce((sum, item) => sum + item.total_price, 0);
   const online = items.filter((item) => item.source === "online").length;
 
-  const today = localIsoDate();
+  const today = iso(new Date());
   const todayItems = items.filter((item) => item.appointment_date === today);
   const todayBilled = todayItems.filter((item) => item.status === "completed" || item.status === "delivered").reduce((sum, item) => sum + item.total_price, 0);
   const selectedRevenueItems = items.filter((item) => item.appointment_date === selectedRevenueDate);
@@ -95,12 +85,8 @@ function DashboardPage() {
 
     if (periodMode === "daily") {
       for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
-        const date = localIsoDate(cursor);
-        points.push({
-          key: date,
-          label: cursor.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-          revenue: completed.filter((item) => item.appointment_date === date).reduce((sum, item) => sum + item.total_price, 0),
-        });
+        const date = iso(cursor);
+        points.push({ key: date, label: cursor.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }), revenue: completed.filter((item) => item.appointment_date === date).reduce((sum, item) => sum + item.total_price, 0) });
       }
     } else if (periodMode === "weekly") {
       for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 7)) {
@@ -108,13 +94,9 @@ function DashboardPage() {
         const chunkEnd = new Date(cursor);
         chunkEnd.setDate(chunkEnd.getDate() + 6);
         if (chunkEnd > end) chunkEnd.setTime(end.getTime());
-        const chunkStartIso = localIsoDate(chunkStart);
-        const chunkEndIso = localIsoDate(chunkEnd);
-        points.push({
-          key: chunkStartIso,
-          label: chunkStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-          revenue: completed.filter((item) => item.appointment_date >= chunkStartIso && item.appointment_date <= chunkEndIso).reduce((sum, item) => sum + item.total_price, 0),
-        });
+        const chunkStartIso = iso(chunkStart);
+        const chunkEndIso = iso(chunkEnd);
+        points.push({ key: chunkStartIso, label: chunkStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }), revenue: completed.filter((item) => item.appointment_date >= chunkStartIso && item.appointment_date <= chunkEndIso).reduce((sum, item) => sum + item.total_price, 0) });
       }
     } else {
       const cursor = new Date(start.getFullYear(), start.getMonth(), 1, 12);
@@ -123,13 +105,9 @@ function DashboardPage() {
         const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 12);
         const from = monthStart < start ? start : monthStart;
         const to = monthEnd > end ? end : monthEnd;
-        const fromIso = localIsoDate(from);
-        const toIso = localIsoDate(to);
-        points.push({
-          key: fromIso,
-          label: cursor.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
-          revenue: completed.filter((item) => item.appointment_date >= fromIso && item.appointment_date <= toIso).reduce((sum, item) => sum + item.total_price, 0),
-        });
+        const fromIso = iso(from);
+        const toIso = iso(to);
+        points.push({ key: fromIso, label: cursor.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""), revenue: completed.filter((item) => item.appointment_date >= fromIso && item.appointment_date <= toIso).reduce((sum, item) => sum + item.total_price, 0) });
         cursor.setMonth(cursor.getMonth() + 1);
       }
     }
@@ -150,28 +128,26 @@ function DashboardPage() {
   const applyPeriodMode = (mode: "daily" | "weekly" | "monthly") => {
     const anchor = new Date(periodStart + "T12:00:00");
     if (mode === "daily") {
-      setPeriodStart(localIsoDate(anchor));
-      setPeriodEnd(localIsoDate(anchor));
+      setPeriodStart(iso(anchor));
+      setPeriodEnd(iso(anchor));
     } else if (mode === "weekly") {
       const weekStart = new Date(anchor);
       const day = weekStart.getDay();
       weekStart.setDate(weekStart.getDate() - (day === 0 ? 6 : day - 1));
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
-      setPeriodStart(localIsoDate(weekStart));
-      setPeriodEnd(localIsoDate(weekEnd));
+      setPeriodStart(iso(weekStart));
+      setPeriodEnd(iso(weekEnd));
     } else {
       const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 12);
       const monthEnd = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 12);
-      setPeriodStart(localIsoDate(monthStart));
-      setPeriodEnd(localIsoDate(monthEnd));
+      setPeriodStart(iso(monthStart));
+      setPeriodEnd(iso(monthEnd));
     }
     setPeriodMode(mode);
   };
 
-  const periodLabel = periodStart === periodEnd
-    ? new Date(periodStart + "T12:00:00").toLocaleDateString("pt-BR")
-    : new Date(periodStart + "T12:00:00").toLocaleDateString("pt-BR") + " — " + new Date(periodEnd + "T12:00:00").toLocaleDateString("pt-BR");
+  const periodLabel = periodStart === periodEnd ? new Date(periodStart + "T12:00:00").toLocaleDateString("pt-BR") : new Date(periodStart + "T12:00:00").toLocaleDateString("pt-BR") + " — " + new Date(periodEnd + "T12:00:00").toLocaleDateString("pt-BR");
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-6 sm:space-y-6 sm:pb-10">
