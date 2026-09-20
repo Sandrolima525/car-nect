@@ -32,7 +32,6 @@ export function CompanySetup() {
       email: user?.email ?? null,
       city: city.trim() || null,
       state: state.trim() || null,
-      owner_id: user?.id ?? "",
     }).select("id").single();
 
     if (companyError || !company) {
