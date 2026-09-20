@@ -1,8 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export async function getCurrentCompanyId() {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const userId = sessionData.session?.user.id;
+  let { data: sessionData } = await supabase.auth.getSession();
+  let userId = sessionData.session?.user.id;
+
+  if (!userId) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    ({ data: sessionData } = await supabase.auth.getSession());
+    userId = sessionData.session?.user.id;
+  }
+
+  if (!userId) {
+    const { data: userData } = await supabase.auth.getUser();
+    userId = userData.user?.id;
+  }
 
   if (!userId) {
     throw new Error("Usuário não autenticado.");
