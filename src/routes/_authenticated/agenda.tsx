@@ -119,7 +119,18 @@ function AgendaPage() {
     }
   };
 
-  useEffect(() => {\n    try {\n      const raw = localStorage.getItem("car-nect:agenda-customer");\n      if (raw) {\n        const customer = JSON.parse(raw) as { name?: string; phone?: string };\n        if (customer.name) setName(customer.name);\n        if (customer.phone) setPhone(customer.phone);\n        localStorage.removeItem("car-nect:agenda-customer");\n      }\n    } catch { /* ignore invalid local draft */ }\n    void load();\n  }, [date]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("car-nect:agenda-customer");
+      if (raw) {
+        const customer = JSON.parse(raw) as { name?: string; phone?: string };
+        if (customer.name) setName(customer.name);
+        if (customer.phone) setPhone(customer.phone);
+        localStorage.removeItem("car-nect:agenda-customer");
+      }
+    } catch { /* ignore invalid local draft */ }
+    void load();
+  }, [date]);
 
   const compatible = useMemo(
     () => services.filter((service) => service.vehicle_category === "all" || service.vehicle_category === vehicleCategory),
