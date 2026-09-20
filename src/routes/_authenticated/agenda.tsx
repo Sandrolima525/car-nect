@@ -326,8 +326,11 @@ function AgendaPage() {
             >
               Hoje
             </Button>
-            <div className="relative flex h-11 w-12 items-center justify-center" title="Selecionar data">
-              <CalendarDays className="h-4 w-4 text-primary" />
+            <div className="relative flex h-11 min-w-28 flex-1 items-center justify-center px-3 sm:min-w-32 sm:flex-none" title="Selecionar data">
+              <CalendarDays className="mr-2 h-4 w-4 shrink-0 text-primary" />
+              <span className="text-sm font-semibold capitalize">
+                {new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "")}
+              </span>
               <input
                 type="date"
                 value={date}
