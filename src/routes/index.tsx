@@ -7,8 +7,8 @@ export const Route = createFileRoute("/")({
   beforeLoad: async () => {
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/auth" });
-    const role = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).maybeSingle();
-    throw redirect({ to: role.data?.role === "admin" ? "/admin" : "/dashboard" });
+    const { data: isAdmin } = await supabase.rpc("is_platform_admin");
+    throw redirect({ to: isAdmin === true ? "/admin" : "/dashboard" });
   },
   component: () => null,
 });
