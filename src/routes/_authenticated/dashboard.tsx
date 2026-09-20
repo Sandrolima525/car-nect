@@ -41,8 +41,9 @@ function DashboardPage() {
       setLoading(true); setError("");
       const id = companyId || await getCurrentCompanyId();
       setCompanyId(id);
-      const start = [periodStart, selectedRevenueDate].sort()[0];
-      const end = [periodEnd, selectedRevenueDate].sort().at(-1) ?? periodEnd;
+      const orderedDates = [periodStart, selectedRevenueDate, periodEnd].sort();
+      const start = orderedDates[0];
+      const end = orderedDates[orderedDates.length - 1];
 
       const [appointments, customerResult, serviceResult] = await Promise.all([
         supabase.from("appointments").select("id,customer_id,customer_name,appointment_date,appointment_time,status,total_price,source").eq("company_id", id).gte("appointment_date", start).lte("appointment_date", end).neq("status", "cancelled").order("appointment_date").order("appointment_time"),
