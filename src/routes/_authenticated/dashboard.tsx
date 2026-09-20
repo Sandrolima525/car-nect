@@ -116,20 +116,20 @@ function DashboardPage() {
         <Kpi icon={Users} label="Clientes" value={loading ? "—" : String(customers)} helper={online + " agendamento(s) online no mês"} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-        <Card className="rounded-2xl border-border/60 shadow-sm">
-          <CardContent className="p-5">
-            <div className="mb-6 flex items-center justify-between"><div><h2 className="font-bold">Faturamento por dia</h2><p className="text-xs text-muted-foreground">Somente atendimentos concluídos</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{money(billed)}</span></div>
-            <div className="flex h-56 items-end gap-1 overflow-x-auto pb-5">
-              {days.map((day) => <div key={day.date} className="group flex h-full min-w-[14px] flex-1 flex-col justify-end"><div className="relative flex-1"><div className="absolute bottom-0 left-0 right-0 rounded-t-md bg-primary/70 transition-all group-hover:bg-primary" style={{ height: Math.max(day.revenue ? 6 : 1, (day.revenue / maxDay) * 100) + "%" }} title={day.day + " · " + money(day.revenue)} /></div><span className="mt-2 text-center text-[9px] text-muted-foreground">{day.day}</span></div>)}
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
+        <Card className="min-w-0 w-full overflow-hidden rounded-2xl border-border/60 shadow-sm">
+          <CardContent className="min-w-0 p-4 sm:p-5">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-2 sm:mb-6"><div><h2 className="font-bold">Faturamento por dia</h2><p className="text-xs text-muted-foreground">Somente atendimentos concluídos</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{money(billed)}</span></div>
+            <div className="grid h-56 w-full min-w-0 grid-cols-[repeat(31,minmax(0,1fr))] items-end gap-[2px] overflow-hidden pb-5 sm:gap-1">
+              {days.map((day) => <div key={day.date} className="group flex h-full min-w-0 flex-col justify-end"><div className="relative flex-1"><div className="absolute bottom-0 left-0 right-0 rounded-t-md bg-primary/70 transition-all group-hover:bg-primary" style={{ height: Math.max(day.revenue ? 6 : 1, (day.revenue / maxDay) * 100) + "%" }} title={day.day + " · " + money(day.revenue)} /></div><span className="mt-2 text-center text-[9px] text-muted-foreground">{day.day}</span></div>)}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-border/60 shadow-sm">
-          <CardContent className="p-5">
+        <Card className="min-w-0 w-full overflow-hidden rounded-2xl border-border/60 shadow-sm">
+          <CardContent className="min-w-0 p-4 sm:p-5">
             <div className="mb-5"><h2 className="font-bold">Resumo do negócio</h2><p className="text-xs text-muted-foreground">Indicadores atuais</p></div>
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
               <Line label="Serviços ativos" value={String(servicesCount)} />
               <Line label="Clientes cadastrados" value={String(customers)} />
               <Line label="Agendamentos online" value={String(online)} />
