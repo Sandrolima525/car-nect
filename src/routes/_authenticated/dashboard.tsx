@@ -50,12 +50,14 @@ function DashboardPage() {
         supabase.from("customers").select("id", { count: "exact", head: true }).eq("company_id", id),
         supabase.from("services").select("id", { count: "exact", head: true }).eq("company_id", id).eq("active", true),
       ]);
+
+      // Agendamentos são o dado principal do dashboard. Se uma consulta
+      // auxiliar (clientes/serviços) falhar por RLS ou indisponibilidade,
+      // não derrubamos a tela inteira.
       if (appointments.error) throw appointments.error;
-      if (customerResult.error) throw customerResult.error;
-      if (serviceResult.error) throw serviceResult.error;
       setItems((appointments.data ?? []).map((item) => ({ ...item, total_price: Number(item.total_price ?? 0) })));
-      setCustomers(customerResult.count ?? 0);
-      setServicesCount(serviceResult.count ?? 0);
+      setCustomers(customerResult.error ? 0 : (customerResult.count ?? 0));
+      setServicesCount(serviceResult.error ? 0 : (serviceResult.count ?? 0));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar o dashboard.");
     } finally {
