@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, DollarSign, Plus, TrendingUp, Users } from "lucide-react";
+import { CalendarDays, Clock3, DollarSign, Plus, TrendingUp, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,10 +24,9 @@ const iso = (date: Date) => date.toLocaleDateString("en-CA");
 
 function DashboardPage() {
   const [companyId, setCompanyId] = useState("");
-  const [month, setMonth] = useState(() => {
-    const now = new Date();
-    return now.toLocaleDateString("en-CA").slice(0, 7);
-  });
+  const [periodMode, setPeriodMode] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [periodStart, setPeriodStart] = useState(() => iso(new Date()));
+  const [periodEnd, setPeriodEnd] = useState(() => iso(new Date()));
   const [items, setItems] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState(0);
   const [servicesCount, setServicesCount] = useState(0);
@@ -39,9 +38,8 @@ function DashboardPage() {
       setLoading(true); setError("");
       const id = companyId || await getCurrentCompanyId();
       setCompanyId(id);
-      const start = month + "-01";
-      const endDate = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0);
-      const end = iso(endDate);
+      const start = periodStart;
+      const end = periodEnd;
 
       const [appointments, customerResult, serviceResult] = await Promise.all([
         supabase.from("appointments").select("id,customer_id,customer_name,appointment_date,appointment_time,status,total_price,source").eq("company_id", id).gte("appointment_date", start).lte("appointment_date", end).neq("status", "cancelled").order("appointment_date").order("appointment_time"),
@@ -61,7 +59,7 @@ function DashboardPage() {
     }
   };
 
-  useEffect(() => { void load(); }, [month]);
+  useEffect(() => { void load(); }, [periodStart, periodEnd]);
 
   const finished = items.filter((item) => item.status === "completed" || item.status === "delivered");
   const projected = items.reduce((sum, item) => sum + item.total_price, 0);
@@ -72,18 +70,56 @@ function DashboardPage() {
   const todayItems = items.filter((item) => item.appointment_date === today);
   const todayBilled = todayItems.filter((item) => item.status === "completed" || item.status === "delivered").reduce((sum, item) => sum + item.total_price, 0);
 
-  const days = useMemo(() => {
-    const year = Number(month.slice(0, 4));
-    const monthNumber = Number(month.slice(5, 7));
-    const count = new Date(year, monthNumber, 0).getDate();
-    return Array.from({ length: count }, (_, index) => {
-      const date = iso(new Date(year, monthNumber - 1, index + 1));
-      const revenue = items.filter((item) => item.appointment_date === date && (item.status === "completed" || item.status === "delivered")).reduce((sum, item) => sum + item.total_price, 0);
-      return { date, day: index + 1, revenue };
-    });
-  }, [items, month]);
+  const revenueData = useMemo(() => {
+    const completed = items.filter((item) => item.status === "completed" || item.status === "delivered");
+    const start = new Date(periodStart + "T12:00:00");
+    const end = new Date(periodEnd + "T12:00:00");
+    const points: { key: string; label: string; revenue: number }[] = [];
 
-  const maxDay = Math.max(1, ...days.map((day) => day.revenue));
+    if (periodMode === "daily") {
+      for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+        const date = iso(cursor);
+        points.push({
+          key: date,
+          label: cursor.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+          revenue: completed.filter((item) => item.appointment_date === date).reduce((sum, item) => sum + item.total_price, 0),
+        });
+      }
+    } else if (periodMode === "weekly") {
+      for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 7)) {
+        const chunkStart = new Date(cursor);
+        const chunkEnd = new Date(cursor);
+        chunkEnd.setDate(chunkEnd.getDate() + 6);
+        if (chunkEnd > end) chunkEnd.setTime(end.getTime());
+        const chunkStartIso = iso(chunkStart);
+        const chunkEndIso = iso(chunkEnd);
+        points.push({
+          key: chunkStartIso,
+          label: chunkStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+          revenue: completed.filter((item) => item.appointment_date >= chunkStartIso && item.appointment_date <= chunkEndIso).reduce((sum, item) => sum + item.total_price, 0),
+        });
+      }
+    } else {
+      const cursor = new Date(start.getFullYear(), start.getMonth(), 1, 12);
+      while (cursor <= end) {
+        const monthStart = new Date(cursor);
+        const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 12);
+        const from = monthStart < start ? start : monthStart;
+        const to = monthEnd > end ? end : monthEnd;
+        const fromIso = iso(from);
+        const toIso = iso(to);
+        points.push({
+          key: fromIso,
+          label: cursor.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+          revenue: completed.filter((item) => item.appointment_date >= fromIso && item.appointment_date <= toIso).reduce((sum, item) => sum + item.total_price, 0),
+        });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    }
+    return points;
+  }, [items, periodMode, periodStart, periodEnd]);
+
+  const maxRevenue = Math.max(1, ...revenueData.map((point) => point.revenue));
   const serviceRanking = useMemo(() => {
     const map = new Map<string, { count: number; value: number }>();
     for (const item of items) {
@@ -94,17 +130,37 @@ function DashboardPage() {
     return Array.from(map.entries()).map(([name, value]) => ({ name, ...value })).sort((a, b) => b.value - a.value).slice(0, 5);
   }, [items]);
 
-  const moveMonth = (offset: number) => {
-    const [year = new Date().getFullYear(), monthNumber = new Date().getMonth() + 1] = month.split("-").map(Number);
-    const next = new Date(year, monthNumber - 1 + offset, 1);
-    setMonth(iso(next).slice(0, 7));
+  const applyPeriodMode = (mode: "daily" | "weekly" | "monthly") => {
+    const anchor = new Date(periodStart + "T12:00:00");
+    if (mode === "daily") {
+      setPeriodStart(iso(anchor));
+      setPeriodEnd(iso(anchor));
+    } else if (mode === "weekly") {
+      const weekStart = new Date(anchor);
+      const day = weekStart.getDay();
+      weekStart.setDate(weekStart.getDate() - (day === 0 ? 6 : day - 1));
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      setPeriodStart(iso(weekStart));
+      setPeriodEnd(iso(weekEnd));
+    } else {
+      const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 12);
+      const monthEnd = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 12);
+      setPeriodStart(iso(monthStart));
+      setPeriodEnd(iso(monthEnd));
+    }
+    setPeriodMode(mode);
   };
+
+  const periodLabel = periodStart === periodEnd
+    ? new Date(periodStart + "T12:00:00").toLocaleDateString("pt-BR")
+    : new Date(periodStart + "T12:00:00").toLocaleDateString("pt-BR") + " — " + new Date(periodEnd + "T12:00:00").toLocaleDateString("pt-BR");
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-6 sm:space-y-6 sm:pb-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><TrendingUp className="h-4 w-4" />Visão financeira</div><h1 className="mt-1 text-3xl font-bold tracking-tight">Dashboard</h1><p className="text-sm text-muted-foreground">Acompanhe faturamento, agenda e crescimento em um só lugar.</p></div>
-        <div className="flex flex-wrap gap-2"><Button variant="outline" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button><div className="flex h-10 items-center rounded-xl border bg-background px-3 text-sm font-semibold">{new Date(month + "-15T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div><Button variant="outline" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button><Button asChild><Link to="/agenda"><Plus className="mr-2 h-4 w-4" />Agendar</Link></Button></div>
+        <Button asChild><Link to="/agenda"><Plus className="mr-2 h-4 w-4" />Agendar</Link></Button>
       </header>
 
       {error && <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
@@ -119,9 +175,42 @@ function DashboardPage() {
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
         <Card className="min-w-0 w-full overflow-hidden rounded-2xl border-border/60 shadow-sm">
           <CardContent className="min-w-0 p-4 sm:p-5">
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-2 sm:mb-6"><div><h2 className="font-bold">Faturamento por dia</h2><p className="text-xs text-muted-foreground">Somente atendimentos concluídos</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{money(billed)}</span></div>
-            <div className="grid h-56 w-full min-w-0 grid-cols-[repeat(31,minmax(0,1fr))] items-end gap-[2px] overflow-hidden pb-5 sm:gap-1">
-              {days.map((day) => <div key={day.date} className="group flex h-full min-w-0 flex-col justify-end"><div className="relative flex-1"><div className="absolute bottom-0 left-0 right-0 rounded-t-md bg-primary/70 transition-all group-hover:bg-primary" style={{ height: Math.max(day.revenue ? 6 : 1, (day.revenue / maxDay) * 100) + "%" }} title={day.day + " · " + money(day.revenue)} /></div><span className="mt-2 text-center text-[9px] text-muted-foreground">{day.day}</span></div>)}
+            <div className="rounded-2xl border bg-muted/30 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex rounded-xl border bg-background p-1">
+                  {(["daily", "weekly", "monthly"] as const).map((mode) => (
+                    <button key={mode} type="button" onClick={() => applyPeriodMode(mode)} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${periodMode === mode ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                      {mode === "daily" ? "Diário" : mode === "weekly" ? "Semanal" : "Mensal"}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-[11px] font-medium text-muted-foreground">De<input type="date" value={periodStart} max={periodEnd} onChange={(event) => setPeriodStart(event.target.value)} className="mt-1 h-9 w-full rounded-lg border bg-background px-2 text-xs font-semibold text-foreground" /></label>
+                  <label className="text-[11px] font-medium text-muted-foreground">Até<input type="date" value={periodEnd} min={periodStart} onChange={(event) => setPeriodEnd(event.target.value)} className="mt-1 h-9 w-full rounded-lg border bg-background px-2 text-xs font-semibold text-foreground" /></label>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 rounded-2xl bg-primary p-4 text-primary-foreground sm:flex-row sm:items-center sm:justify-between sm:p-5">
+              <div><p className="text-xs font-semibold uppercase tracking-wider opacity-75">Receita de hoje</p><p className="mt-1 text-3xl font-black tracking-tight">{money(todayBilled)}</p><p className="mt-1 text-xs opacity-75">{todayItems.length} atendimento(s) hoje</p></div>
+              <div className="rounded-xl bg-primary-foreground/10 px-3 py-2 text-left sm:text-right"><p className="text-[11px] opacity-75">Período analisado</p><p className="text-sm font-bold">{periodLabel}</p></div>
+            </div>
+
+            <div className="mt-5 flex items-end justify-between gap-3">
+              <div><h2 className="font-bold">Faturamento {periodMode === "daily" ? "diário" : periodMode === "weekly" ? "semanal" : "mensal"}</h2><p className="text-xs text-muted-foreground">Somente atendimentos concluídos</p></div>
+              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{money(billed)}</span>
+            </div>
+
+            <div className="mt-4 grid h-60 min-w-0 items-end gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(revenueData.length, 1)}, minmax(0, 1fr))` }}>
+              {revenueData.map((point) => (
+                <div key={point.key} className="group flex h-full min-w-0 flex-col justify-end">
+                  <div className="mb-2 text-center text-[10px] font-semibold text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">{money(point.revenue)}</div>
+                  <div className="relative min-h-0 flex-1 rounded-t-xl bg-muted/50">
+                    <div className="absolute bottom-0 left-1 right-1 rounded-t-lg bg-primary/75 transition-all group-hover:bg-primary" style={{ height: Math.max(point.revenue ? 8 : 2, (point.revenue / maxRevenue) * 100) + "%" }} title={point.label + " · " + money(point.revenue)} />
+                  </div>
+                  <span className="mt-2 truncate text-center text-[10px] font-medium text-muted-foreground">{point.label}</span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
