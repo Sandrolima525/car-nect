@@ -218,7 +218,6 @@ function AgendaPage() {
 
   const selectCustomer = async (customer: CustomerSuggestion) => {
     setSelectedCustomerId(customer.id);
-    setCustomerSuggestions([]);
     setName(customer.name);
     setPhone(customer.phone ?? "");
     setCustomerVehicles([]);
@@ -321,7 +320,7 @@ function AgendaPage() {
 
   const resetForm = () => {
     setName(""); setPhone(""); setVehicleCategory("Hatch"); setPlate(""); setBrand(""); setModel("");
-    setCustomerSuggestions([]); setSelectedCustomerId(""); setCustomerVehicles([]); setSelectedVehicleId("");
+    setSelectedCustomerId(""); setCustomerVehicles([]); setSelectedVehicleId("");
     setServiceIds([]); setTime(""); setSlots([]); setNotes("");
   };
 
