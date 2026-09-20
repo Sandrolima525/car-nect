@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, Clock3, DollarSign, Plus, TrendingUp, Users } from "lucide-react";
+import { CalendarDays, Clock3, DollarSign, Eye, EyeOff, Plus, TrendingUp, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ function DashboardPage() {
   const [periodMode, setPeriodMode] = useState<"daily" | "weekly" | "monthly">("daily");
   const [periodStart, setPeriodStart] = useState(() => iso(new Date()));
   const [periodEnd, setPeriodEnd] = useState(() => iso(new Date()));
+  const [showTodayRevenue, setShowTodayRevenue] = useState(false);
   const [items, setItems] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState(0);
   const [servicesCount, setServicesCount] = useState(0);
