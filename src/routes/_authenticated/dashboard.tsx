@@ -193,7 +193,7 @@ function DashboardPage() {
             </div>
 
             <div className="mt-4 flex flex-col gap-3 rounded-2xl bg-primary p-4 text-primary-foreground sm:flex-row sm:items-center sm:justify-between sm:p-5">
-              <div><p className="text-xs font-semibold uppercase tracking-wider opacity-75">Receita de hoje</p><p className="mt-1 text-3xl font-black tracking-tight">{money(todayBilled)}</p><p className="mt-1 text-xs opacity-75">{todayItems.length} atendimento(s) hoje</p></div>
+              <div><div className="flex items-center gap-2"><p className="text-xs font-semibold uppercase tracking-wider opacity-75">Receita de hoje</p><button type="button" onClick={() => setShowTodayRevenue((visible) => !visible)} className="rounded-md p-1 opacity-80 transition hover:bg-primary-foreground/10 hover:opacity-100" aria-label={showTodayRevenue ? "Ocultar receita de hoje" : "Exibir receita de hoje"} title={showTodayRevenue ? "Ocultar receita" : "Exibir receita"}>{showTodayRevenue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div><p className="mt-1 text-3xl font-black tracking-tight">{showTodayRevenue ? money(todayBilled) : "R$ •••••"}</p><p className="mt-1 text-xs opacity-75">{todayItems.length} atendimento(s) hoje</p></div>
               <div className="rounded-xl bg-primary-foreground/10 px-3 py-2 text-left sm:text-right"><p className="text-[11px] opacity-75">Período analisado</p><p className="text-sm font-bold">{periodLabel}</p></div>
             </div>
 
