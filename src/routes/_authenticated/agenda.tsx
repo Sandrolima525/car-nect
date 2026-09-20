@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ptBR } from "date-fns/locale";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, Clock3, LockKeyhole, MessageCircle, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,8 @@ type Service = {
   estimated_duration: number | null;
   vehicle_category: string;
 };
+
+type BusinessHour = { open: string; close: string; enabled: boolean };
 
 type BookingBlock = {
   id: string;
@@ -84,6 +87,7 @@ function AgendaPage() {
   const [open, setOpen] = useState(false);
   const [companyId, setCompanyId] = useState("");
   const [companyName, setCompanyName] = useState("Sua empresa");
+  const [businessHours, setBusinessHours] = useState<Record<string, BusinessHour>>({});
   const [bookingSlug, setBookingSlug] = useState("");
   const [blocks, setBlocks] = useState<BookingBlock[]>([]);
   const [blockOpen, setBlockOpen] = useState(false);
@@ -117,14 +121,14 @@ function AgendaPage() {
       setCompanyId(id);
 
       const [companyRes, servicesRes, appointmentsRes, blocksRes, customersRes] = await Promise.all([
-        supabase.from("companies").select("name,public_booking_slug").eq("id", id).maybeSingle(),
+        supabase.from("companies").select("name,public_booking_slug,business_hours").eq("id", id).maybeSingle(),
         supabase.from("services").select("id,name,price,estimated_duration,vehicle_category").eq("company_id", id).eq("active", true).order("name"),
         supabase.from("appointments")
           .select("id,customer_id,customer_name,customer_phone,vehicle_plate,appointment_date,appointment_time,status,total_price,total_duration,source")
           .eq("company_id", id).eq("appointment_date", date).neq("status", "cancelled").order("appointment_time"),
         supabase.from("booking_blocks")
           .select("id,block_date,start_time,end_time,reason")
-          .eq("company_id", id).eq("block_date", date).order("start_time"),
+          .eq("company_id", id).gte("block_date", today()).order("block_date").order("start_time"),
         supabase.from("customers")
           .select("id,name,phone")
           .eq("company_id", id).order("name"),
@@ -139,6 +143,7 @@ function AgendaPage() {
       setCustomers((customersRes.data ?? []) as CustomerSuggestion[]);
 
       setCompanyName(companyRes.data?.name ?? "Sua empresa");
+      setBusinessHours((companyRes.data?.business_hours ?? {}) as Record<string, BusinessHour>);
       setBookingSlug(companyRes.data?.public_booking_slug ?? "");
       setBlocks((blocksRes.data ?? []) as BookingBlock[]);
       setServices((servicesRes.data ?? []) as Service[]);
@@ -181,6 +186,17 @@ function AgendaPage() {
     } catch { /* ignore invalid local draft */ }
     void load();
   }, [date]);
+
+  const dayKey = (value: Date) => ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][value.getDay()];
+  const toLocalDateKey = (value: Date) => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return year + "-" + month + "-" + day;
+  };
+  const isFullDayBlocked = (value: Date) => blocks.some((block) => block.block_date === toLocalDateKey(value) && block.start_time === "00:00:00" && block.end_time.startsWith("23:59"));
+  const isClosedDay = (value: Date) => businessHours[dayKey(value)]?.enabled === false;
+  const isUnavailableDate = (value: Date) => value < new Date(new Date().setHours(0, 0, 0, 0)) || isClosedDay(value) || isFullDayBlocked(value);
 
   const compatible = useMemo(
     () => services.filter((service) => service.vehicle_category === "all" || service.vehicle_category === vehicleCategory),
@@ -421,12 +437,13 @@ function AgendaPage() {
                 onSelect={(selected) => {
                   if (!selected) return;
                   const currentToday = today();
-                  const selectedDate = selected.toLocaleDateString("en-CA");
+                  const selectedDate = toLocalDateKey(selected);
                   if (selectedDate < currentToday) return;
                   setDate(selectedDate);
                   setCalendarOpen(false);
                 }}
-                disabled={{ before: new Date() }}
+                locale={ptBR}
+                disabled={isUnavailableDate}
                 hidden={{ before: new Date() }}
                 initialFocus
               />
@@ -608,7 +625,7 @@ function AgendaPage() {
             </div>
             <div>
               <Label>Serviços *</Label>
-              <div className="mt-2 grid gap-2">{compatible.map((service) => <label key={service.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${serviceIds.includes(service.id) ? "border-primary bg-primary/10" : "border-border"}`}><input type="checkbox" checked={serviceIds.includes(service.id)} onChange={() => setServiceIds((current) => current.includes(service.id) ? current.filter((id) => id !== service.id) : [...current, service.id])} /><span className="flex-1 text-sm font-medium">{service.name}</span><span className="text-xs text-muted-foreground">{service.estimated_duration ?? 60} min · {money(Number(service.price))}</span></label>)}</div>
+              <div className="mt-2 grid gap-2">{compatible.length === 0 ? <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Nenhum serviço ativo disponível para este tipo de veículo.</div> : compatible.map((service) => <label key={service.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${serviceIds.includes(service.id) ? "border-primary bg-primary/10" : "border-border"}`}><input type="checkbox" checked={serviceIds.includes(service.id)} onChange={() => setServiceIds((current) => current.includes(service.id) ? current.filter((id) => id !== service.id) : [...current, service.id])} /><span className="flex-1 text-sm font-medium">{service.name}</span><span className="text-xs text-muted-foreground">{service.estimated_duration ?? 60} min · {money(Number(service.price))}</span></label>)}</div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -630,7 +647,8 @@ function AgendaPage() {
                         if (selectedDate < today()) return;
                         setDate(selectedDate);
                       }}
-                      disabled={{ before: new Date() }}
+                      locale={ptBR}
+                      disabled={isUnavailableDate}
                       hidden={{ before: new Date() }}
                       initialFocus
                     />
