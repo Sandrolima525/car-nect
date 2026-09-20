@@ -41,7 +41,13 @@ function ClientsPage() {
       setLoading(true); setError("");
       const id = companyId || await getCurrentCompanyId();
       setCompanyId(id);
-      const result = await supabase.from("customers").select("id,name,phone,email,notes,created_at").eq("company_id", id).order("name");
+      let result = await supabase.from("customers").select("id,name,phone,email,notes,created_at").eq("company_id", id).order("name");
+
+      if (result.error) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        result = await supabase.from("customers").select("id,name,phone,email,notes,created_at").eq("company_id", id).order("name");
+      }
+
       if (result.error) throw result.error;
       setCustomers((result.data ?? []) as Customer[]);
     } catch (err) {
@@ -66,15 +72,20 @@ function ClientsPage() {
         supabase.from("vehicles").select("id,plate,brand,model,category").eq("company_id", companyId).eq("customer_id", customer.id).order("created_at", { ascending: false }),
         supabase.from("appointments").select("id,appointment_date,appointment_time,status,total_price,vehicle_plate,source").eq("company_id", companyId).eq("customer_id", customer.id).order("appointment_date", { ascending: false }).order("appointment_time", { ascending: false }).limit(50),
       ]);
-      if (vehiclesResult.error) throw vehiclesResult.error;
-      if (appointmentsResult.error) throw appointmentsResult.error;
+      if (vehiclesResult.error) {
+        console.warn("Não foi possível carregar os veículos do cliente:", vehiclesResult.error.message);
+      }
+      if (appointmentsResult.error) {
+        console.warn("Não foi possível carregar o histórico do cliente:", appointmentsResult.error.message);
+      }
+
       const ids = (appointmentsResult.data ?? []).map((item) => item.id);
       const links = ids.length ? await (supabase as any).from("appointment_services").select("appointment_id,service:services(name)").in("appointment_id", ids) : { data: [], error: null };
-      if (links.error) throw links.error;
+      if (links.error) console.warn("Não foi possível carregar os serviços do histórico:", links.error.message);
       const serviceNames = new Map<string, string[]>();
       for (const link of links.data ?? []) serviceNames.set(link.appointment_id, [...(serviceNames.get(link.appointment_id) ?? []), link.service?.name].filter(Boolean));
-      setVehicles((vehiclesResult.data ?? []) as Vehicle[]);
-      setVisits((appointmentsResult.data ?? []).map((item: any) => ({ ...item, total_price: Number(item.total_price ?? 0), services: serviceNames.get(item.id) ?? [] })) as Visit[]);
+      setVehicles(vehiclesResult.error ? [] : ((vehiclesResult.data ?? []) as Vehicle[]));
+      setVisits(appointmentsResult.error ? [] : ((appointmentsResult.data ?? []).map((item: any) => ({ ...item, total_price: Number(item.total_price ?? 0), services: serviceNames.get(item.id) ?? [] })) as Visit[]));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar o histórico.");
     } finally {
