@@ -28,6 +28,8 @@ function DashboardPage() {
   const [periodStart, setPeriodStart] = useState(() => iso(new Date()));
   const [periodEnd, setPeriodEnd] = useState(() => iso(new Date()));
   const [showTodayRevenue, setShowTodayRevenue] = useState(false);
+  const [selectedRevenueDate, setSelectedRevenueDate] = useState(() => iso(new Date()));
+  const [showRevenueDatePicker, setShowRevenueDatePicker] = useState(false);
   const [items, setItems] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState(0);
   const [servicesCount, setServicesCount] = useState(0);
@@ -39,8 +41,8 @@ function DashboardPage() {
       setLoading(true); setError("");
       const id = companyId || await getCurrentCompanyId();
       setCompanyId(id);
-      const start = periodStart;
-      const end = periodEnd;
+      const start = [periodStart, selectedRevenueDate].sort()[0];
+      const end = [periodEnd, selectedRevenueDate].sort().at(-1) ?? periodEnd;
 
       const [appointments, customerResult, serviceResult] = await Promise.all([
         supabase.from("appointments").select("id,customer_id,customer_name,appointment_date,appointment_time,status,total_price,source").eq("company_id", id).gte("appointment_date", start).lte("appointment_date", end).neq("status", "cancelled").order("appointment_date").order("appointment_time"),
@@ -60,7 +62,7 @@ function DashboardPage() {
     }
   };
 
-  useEffect(() => { void load(); }, [periodStart, periodEnd]);
+  useEffect(() => { void load(); }, [periodStart, periodEnd, selectedRevenueDate]);
 
   const finished = items.filter((item) => item.status === "completed" || item.status === "delivered");
   const projected = items.reduce((sum, item) => sum + item.total_price, 0);
@@ -70,6 +72,9 @@ function DashboardPage() {
   const today = iso(new Date());
   const todayItems = items.filter((item) => item.appointment_date === today);
   const todayBilled = todayItems.filter((item) => item.status === "completed" || item.status === "delivered").reduce((sum, item) => sum + item.total_price, 0);
+  const selectedRevenueItems = items.filter((item) => item.appointment_date === selectedRevenueDate);
+  const selectedRevenue = selectedRevenueItems.filter((item) => item.status === "completed" || item.status === "delivered").reduce((sum, item) => sum + item.total_price, 0);
+  const selectedRevenueLabel = new Date(selectedRevenueDate + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).replace(".", "");
 
   const revenueData = useMemo(() => {
     const completed = items.filter((item) => item.status === "completed" || item.status === "delivered");
@@ -194,7 +199,16 @@ function DashboardPage() {
 
             <div className="mt-4 flex flex-col gap-3 rounded-2xl bg-primary p-4 text-primary-foreground sm:flex-row sm:items-center sm:justify-between sm:p-5">
               <div><div className="flex items-center gap-2"><p className="text-xs font-semibold uppercase tracking-wider opacity-75">Receita de hoje</p><button type="button" onClick={() => setShowTodayRevenue((visible) => !visible)} className="rounded-md p-1 opacity-80 transition hover:bg-primary-foreground/10 hover:opacity-100" aria-label={showTodayRevenue ? "Ocultar receita de hoje" : "Exibir receita de hoje"} title={showTodayRevenue ? "Ocultar receita" : "Exibir receita"}>{showTodayRevenue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div><p className="mt-1 text-3xl font-black tracking-tight">{showTodayRevenue ? money(todayBilled) : "R$ •••••"}</p><p className="mt-1 text-xs opacity-75">{todayItems.length} atendimento(s) hoje</p></div>
-              <div className="rounded-xl bg-primary-foreground/10 px-3 py-2 text-left sm:text-right"><p className="text-[11px] opacity-75">Período analisado</p><p className="text-sm font-bold">{periodLabel}</p></div>
+              <div className="relative">
+                <button type="button" onClick={() => setShowRevenueDatePicker((open) => !open)} className="w-full rounded-xl bg-primary-foreground/10 px-3 py-2 text-left transition hover:bg-primary-foreground/15 sm:text-right" aria-expanded={showRevenueDatePicker}>
+                  <p className="text-[11px] opacity-75">Período analisado</p><p className="text-sm font-bold">{periodLabel}</p><p className="mt-1 text-[10px] opacity-70">Clique para ver outra data</p>
+                </button>
+                {showRevenueDatePicker && <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-xl border border-border bg-background p-3 text-foreground shadow-xl">
+                  <p className="mb-2 text-xs font-semibold">Faturamento por data</p>
+                  <input type="date" value={selectedRevenueDate} onChange={(event) => { setSelectedRevenueDate(event.target.value); setShowRevenueDatePicker(false); }} className="h-10 w-full rounded-lg border bg-background px-3 text-sm font-semibold" />
+                  <div className="mt-3 rounded-lg bg-muted/50 p-3"><p className="text-[10px] text-muted-foreground">{selectedRevenueLabel}</p><p className="mt-1 text-lg font-black">{showTodayRevenue || selectedRevenueDate === today ? money(selectedRevenue) : "R$ •••••"}</p><p className="text-[10px] text-muted-foreground">{selectedRevenueItems.length} atendimento(s)</p></div>
+                </div>}
+              </div>
             </div>
 
             <div className="mt-5 flex items-end justify-between gap-3">
