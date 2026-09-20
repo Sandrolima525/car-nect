@@ -253,34 +253,29 @@ function AgendaPage() {
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Agenda</h1>
           <p className="text-sm capitalize text-muted-foreground">{new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</p>
         </div>
-        <div className="grid grid-cols-[44px_1fr_44px] gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          <div className="flex h-11 w-full items-center overflow-hidden rounded-xl border bg-background shadow-sm sm:w-auto">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 rounded-none border-r px-4 font-semibold hover:bg-muted"
+              onClick={() => setDate(today())}
+            >
+              Hoje
+            </Button>
+            <div className="relative flex h-11 w-12 items-center justify-center" title="Selecionar data">
+              <CalendarDays className="h-4 w-4 text-primary" />
+              <input
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                aria-label="Selecionar data da agenda"
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
+            </div>
+          </div>
           <Button
-            variant="outline"
-            size="icon"
-            className="h-10 w-11 rounded-xl"
-            onClick={() => moveDate(-1)}
-            aria-label="Dia anterior"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl px-4 font-semibold"
-            onClick={() => setDate(today())}
-          >
-            Hoje
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-10 w-11 rounded-xl"
-            onClick={() => moveDate(1)}
-            aria-label="Próximo dia"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            className="col-span-3 h-10 rounded-xl sm:col-span-1"
+            className="h-11 rounded-xl"
             onClick={() => { setError(""); setOpen(true); }}
           >
             <Plus className="mr-2 h-4 w-4" />Novo agendamento
