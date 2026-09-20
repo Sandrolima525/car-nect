@@ -37,7 +37,16 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session) navigate({ to: "/dashboard", replace: true });
+      if (!data.session?.user) return;
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.session.user.id)
+        .maybeSingle();
+      navigate({
+        to: roleData?.role === "admin" ? "/admin" : "/dashboard",
+        replace: true,
+      });
     });
   }, [navigate]);
 
