@@ -17,27 +17,30 @@ export type Database = {
       appointment_services: {
         Row: {
           appointment_id: string
+          company_id: string
           created_at: string
           duration_minutes: number
           id: string
           price: number
-          service_id: string
+          service_id: string | null
         }
         Insert: {
           appointment_id: string
+          company_id: string
           created_at?: string
           duration_minutes?: number
           id?: string
           price?: number
-          service_id: string
+          service_id?: string | null
         }
         Update: {
           appointment_id?: string
+          company_id?: string
           created_at?: string
           duration_minutes?: number
           id?: string
           price?: number
-          service_id?: string
+          service_id?: string | null
         }
         Relationships: [
           {
@@ -45,6 +48,13 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_services_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
           {
@@ -60,72 +70,72 @@ export type Database = {
         Row: {
           appointment_date: string
           appointment_time: string
-          check_in_at: string | null
           company_id: string
           completed_at: string | null
           created_at: string
           customer_id: string | null
           customer_name: string
-          customer_phone: string
+          customer_phone: string | null
           customer_user_id: string | null
           id: string
           notes: string | null
           ready_at: string | null
-          service_id: string | null
           source: string
           status: string
           total_duration: number
           total_price: number
           updated_at: string
-          vehicle_id: string | null
+          vehicle_brand: string | null
+          vehicle_category: string | null
+          vehicle_model: string | null
           vehicle_plate: string | null
           washing_at: string | null
         }
         Insert: {
           appointment_date: string
           appointment_time: string
-          check_in_at?: string | null
           company_id: string
           completed_at?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name: string
-          customer_phone: string
+          customer_phone?: string | null
           customer_user_id?: string | null
           id?: string
           notes?: string | null
           ready_at?: string | null
-          service_id?: string | null
           source?: string
           status?: string
           total_duration?: number
           total_price?: number
           updated_at?: string
-          vehicle_id?: string | null
+          vehicle_brand?: string | null
+          vehicle_category?: string | null
+          vehicle_model?: string | null
           vehicle_plate?: string | null
           washing_at?: string | null
         }
         Update: {
           appointment_date?: string
           appointment_time?: string
-          check_in_at?: string | null
           company_id?: string
           completed_at?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name?: string
-          customer_phone?: string
+          customer_phone?: string | null
           customer_user_id?: string | null
           id?: string
           notes?: string | null
           ready_at?: string | null
-          service_id?: string | null
           source?: string
           status?: string
           total_duration?: number
           total_price?: number
           updated_at?: string
-          vehicle_id?: string | null
+          vehicle_brand?: string | null
+          vehicle_category?: string | null
+          vehicle_model?: string | null
           vehicle_plate?: string | null
           washing_at?: string | null
         }
@@ -142,20 +152,6 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointments_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "services"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointments_vehicle_id_fkey"
-            columns: ["vehicle_id"]
-            isOneToOne: false
-            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -204,17 +200,15 @@ export type Database = {
           address: string | null
           booking_interval_minutes: number
           booking_min_advance_minutes: number
-          brand_colors: Json
-          business_hours: Json
+          brand_colors: Json | null
+          business_hours: Json | null
           city: string | null
           created_at: string
-          currency: string
           document: string | null
           email: string | null
           id: string
           logo_url: string | null
           name: string
-          owner_id: string
           phone: string | null
           public_booking_enabled: boolean
           public_booking_slug: string | null
@@ -230,17 +224,15 @@ export type Database = {
           address?: string | null
           booking_interval_minutes?: number
           booking_min_advance_minutes?: number
-          brand_colors?: Json
-          business_hours?: Json
+          brand_colors?: Json | null
+          business_hours?: Json | null
           city?: string | null
           created_at?: string
-          currency?: string
           document?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
           name: string
-          owner_id: string
           phone?: string | null
           public_booking_enabled?: boolean
           public_booking_slug?: string | null
@@ -256,17 +248,15 @@ export type Database = {
           address?: string | null
           booking_interval_minutes?: number
           booking_min_advance_minutes?: number
-          brand_colors?: Json
-          business_hours?: Json
+          brand_colors?: Json | null
+          business_hours?: Json | null
           city?: string | null
           created_at?: string
-          currency?: string
           document?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
           name?: string
-          owner_id?: string
           phone?: string | null
           public_booking_enabled?: boolean
           public_booking_slug?: string | null
@@ -281,37 +271,37 @@ export type Database = {
       }
       customers: {
         Row: {
-          company_id: string | null
+          company_id: string
           created_at: string
+          document: string | null
           email: string | null
           id: string
           name: string
           notes: string | null
           phone: string | null
           updated_at: string
-          workshop_id: string | null
         }
         Insert: {
-          company_id?: string | null
+          company_id: string
           created_at?: string
+          document?: string | null
           email?: string | null
           id?: string
           name: string
           notes?: string | null
           phone?: string | null
           updated_at?: string
-          workshop_id?: string | null
         }
         Update: {
-          company_id?: string | null
+          company_id?: string
           created_at?: string
+          document?: string | null
           email?: string | null
           id?: string
           name?: string
           notes?: string | null
           phone?: string | null
           updated_at?: string
-          workshop_id?: string | null
         }
         Relationships: [
           {
@@ -319,13 +309,6 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customers_workshop_id_fkey"
-            columns: ["workshop_id"]
-            isOneToOne: false
-            referencedRelation: "workshops"
             referencedColumns: ["id"]
           },
         ]
@@ -377,85 +360,6 @@ export type Database = {
           },
         ]
       }
-      oil_changes: {
-        Row: {
-          changed_at: string
-          created_at: string
-          created_by: string | null
-          customer_id: string | null
-          filter_changed: boolean
-          id: string
-          mileage: number
-          next_change_date: string | null
-          next_change_mileage: number | null
-          notes: string | null
-          oil_brand: string | null
-          oil_quantity: number | null
-          oil_type: string | null
-          oil_viscosity: string | null
-          vehicle_id: string
-          workshop_id: string
-        }
-        Insert: {
-          changed_at?: string
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string | null
-          filter_changed?: boolean
-          id?: string
-          mileage: number
-          next_change_date?: string | null
-          next_change_mileage?: number | null
-          notes?: string | null
-          oil_brand?: string | null
-          oil_quantity?: number | null
-          oil_type?: string | null
-          oil_viscosity?: string | null
-          vehicle_id: string
-          workshop_id: string
-        }
-        Update: {
-          changed_at?: string
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string | null
-          filter_changed?: boolean
-          id?: string
-          mileage?: number
-          next_change_date?: string | null
-          next_change_mileage?: number | null
-          notes?: string | null
-          oil_brand?: string | null
-          oil_quantity?: number | null
-          oil_type?: string | null
-          oil_viscosity?: string | null
-          vehicle_id?: string
-          workshop_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "oil_changes_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "oil_changes_vehicle_id_fkey"
-            columns: ["vehicle_id"]
-            isOneToOne: false
-            referencedRelation: "vehicles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "oil_changes_workshop_id_fkey"
-            columns: ["workshop_id"]
-            isOneToOne: false
-            referencedRelation: "workshops"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       payments: {
         Row: {
           amount: number
@@ -464,9 +368,9 @@ export type Database = {
           id: string
           notes: string | null
           paid_at: string | null
-          payment_method: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
           service_order_id: string | null
-          status: string
+          status: Database["public"]["Enums"]["payment_status"]
           updated_at: string
         }
         Insert: {
@@ -476,9 +380,9 @@ export type Database = {
           id?: string
           notes?: string | null
           paid_at?: string | null
-          payment_method?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
           service_order_id?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
         }
         Update: {
@@ -488,9 +392,9 @@ export type Database = {
           id?: string
           notes?: string | null
           paid_at?: string | null
-          payment_method?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
           service_order_id?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
         }
         Relationships: [
@@ -518,7 +422,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
-          role: string
+          role: Database["public"]["Enums"]["app_role"]
           updated_at: string
           user_id: string
         }
@@ -529,7 +433,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
-          role?: string
+          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           user_id: string
         }
@@ -540,7 +444,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
-          role?: string
+          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           user_id?: string
         }
@@ -611,7 +515,6 @@ export type Database = {
       }
       service_orders: {
         Row: {
-          appointment_id: string | null
           company_id: string
           completed_at: string | null
           created_at: string
@@ -629,7 +532,6 @@ export type Database = {
           vehicle_id: string | null
         }
         Insert: {
-          appointment_id?: string | null
           company_id: string
           completed_at?: string | null
           created_at?: string
@@ -647,7 +549,6 @@ export type Database = {
           vehicle_id?: string | null
         }
         Update: {
-          appointment_id?: string | null
           company_id?: string
           completed_at?: string | null
           created_at?: string
@@ -665,13 +566,6 @@ export type Database = {
           vehicle_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "service_orders_appointment_id_fkey"
-            columns: ["appointment_id"]
-            isOneToOne: false
-            referencedRelation: "appointments"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "service_orders_company_id_fkey"
             columns: ["company_id"]
@@ -752,77 +646,50 @@ export type Database = {
           },
         ]
       }
-      user_roles: {
-        Row: {
-          created_at: string
-          role: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          role?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          role?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       vehicles: {
         Row: {
           brand: string | null
-          category: string
+          category: string | null
           color: string | null
-          company_id: string | null
+          company_id: string
           created_at: string
-          customer_id: string | null
+          customer_id: string
           id: string
           mileage: number | null
           model: string | null
-          nfc_tag_uid: string | null
           notes: string | null
-          plate: string | null
-          public_token: string
+          plate: string
           updated_at: string
-          workshop_id: string | null
           year: number | null
         }
         Insert: {
           brand?: string | null
-          category?: string
+          category?: string | null
           color?: string | null
-          company_id?: string | null
+          company_id: string
           created_at?: string
-          customer_id?: string | null
+          customer_id: string
           id?: string
           mileage?: number | null
           model?: string | null
-          nfc_tag_uid?: string | null
           notes?: string | null
-          plate?: string | null
-          public_token?: string
+          plate: string
           updated_at?: string
-          workshop_id?: string | null
           year?: number | null
         }
         Update: {
           brand?: string | null
-          category?: string
+          category?: string | null
           color?: string | null
-          company_id?: string | null
+          company_id?: string
           created_at?: string
-          customer_id?: string | null
+          customer_id?: string
           id?: string
           mileage?: number | null
           model?: string | null
-          nfc_tag_uid?: string | null
           notes?: string | null
-          plate?: string | null
-          public_token?: string
+          plate?: string
           updated_at?: string
-          workshop_id?: string | null
           year?: number | null
         }
         Relationships: [
@@ -840,113 +707,22 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "vehicles_workshop_id_fkey"
-            columns: ["workshop_id"]
-            isOneToOne: false
-            referencedRelation: "workshops"
-            referencedColumns: ["id"]
-          },
         ]
-      }
-      workshop_users: {
-        Row: {
-          created_at: string
-          role: string
-          user_id: string
-          workshop_id: string
-        }
-        Insert: {
-          created_at?: string
-          role?: string
-          user_id: string
-          workshop_id: string
-        }
-        Update: {
-          created_at?: string
-          role?: string
-          user_id?: string
-          workshop_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workshop_users_workshop_id_fkey"
-            columns: ["workshop_id"]
-            isOneToOne: false
-            referencedRelation: "workshops"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      workshops: {
-        Row: {
-          active: boolean
-          address: string | null
-          city: string | null
-          created_at: string
-          document: string | null
-          email: string | null
-          id: string
-          name: string
-          owner_id: string
-          phone: string | null
-          state: string | null
-          trade_name: string | null
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          address?: string | null
-          city?: string | null
-          created_at?: string
-          document?: string | null
-          email?: string | null
-          id?: string
-          name: string
-          owner_id: string
-          phone?: string | null
-          state?: string | null
-          trade_name?: string | null
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          address?: string | null
-          city?: string | null
-          created_at?: string
-          document?: string | null
-          email?: string | null
-          id?: string
-          name?: string
-          owner_id?: string
-          phone?: string | null
-          state?: string | null
-          trade_name?: string | null
-          updated_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      can_manage_company_logo: {
-        Args: { _company_id: string }
-        Returns: boolean
-      }
-      create_public_booking: {
+      create_company_for_current_user: {
         Args: {
-          _date: string
+          _city?: string
+          _document?: string
+          _email?: string
           _name: string
-          _notes?: string
-          _phone: string
-          _service_id: string
-          _slug: string
-          _time: string
-          _vehicle_brand?: string
-          _vehicle_model?: string
-          _vehicle_plate?: string
+          _phone?: string
+          _state?: string
+          _trade_name?: string
         }
         Returns: string
       }
@@ -975,28 +751,37 @@ export type Database = {
           _service_ids: string[]
           _time: string
           _vehicle_brand?: string
-          _vehicle_category: string
+          _vehicle_category?: string
           _vehicle_model?: string
           _vehicle_plate?: string
         }
         Returns: string
       }
-      get_public_available_slots: {
-        Args: { _date: string; _service_id: string; _slug: string }
-        Returns: {
-          slot: string
-        }[]
-      }
+      current_company_id: { Args: never; Returns: string }
       get_public_available_slots_multi: {
         Args: { _date: string; _service_ids: string[]; _slug: string }
         Returns: {
           slot: string
         }[]
       }
-      is_platform_admin: { Args: never; Returns: boolean }
-      is_workshop_member: { Args: { p_workshop_id: string }; Returns: boolean }
+      has_role: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
+      is_company_admin: { Args: never; Returns: boolean }
+      manage_company_profile: {
+        Args: {
+          _active: boolean
+          _profile_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: undefined
+      }
     }
     Enums: {
+      app_role: "owner" | "admin" | "manager" | "employee"
+      payment_method: "cash" | "pix" | "debit_card" | "credit_card" | "other"
+      payment_status: "pending" | "paid" | "cancelled" | "refunded"
       service_order_status:
         | "pending"
         | "in_progress"
@@ -1130,6 +915,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["owner", "admin", "manager", "employee"],
+      payment_method: ["cash", "pix", "debit_card", "credit_card", "other"],
+      payment_status: ["pending", "paid", "cancelled", "refunded"],
       service_order_status: [
         "pending",
         "in_progress",
