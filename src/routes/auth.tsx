@@ -38,13 +38,9 @@ function AuthPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session?.user) return;
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.session.user.id)
-        .maybeSingle();
+      const { data: isAdmin } = await supabase.rpc("is_platform_admin");
       navigate({
-        to: roleData?.role === "admin" ? "/admin" : "/dashboard",
+        to: isAdmin === true ? "/admin" : "/dashboard",
         replace: true,
       });
     });
@@ -99,8 +95,10 @@ function AuthPage() {
       setError("E-mail ou senha inválidos.");
       return;
     }
-    const role = signInData.user ? await supabase.from("user_roles").select("role").eq("user_id", signInData.user.id).maybeSingle() : null;
-    navigate({ to: role?.data?.role === "admin" ? "/admin" : "/dashboard", replace: true });
+    const { data: isAdmin } = signInData.user
+      ? await supabase.rpc("is_platform_admin")
+      : { data: false };
+    navigate({ to: isAdmin === true ? "/admin" : "/dashboard", replace: true });
   }
 
   return (
