@@ -247,13 +247,13 @@ function AgendaPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 pb-10">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <header className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><CalendarDays className="h-4 w-4" />Agenda inteligente</div>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Agenda</h1>
           <p className="text-sm capitalize text-muted-foreground">{new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <Button variant="outline" size="icon" onClick={() => moveDate(-1)}><ChevronLeft className="h-4 w-4" /></Button>
           <Button variant="outline" onClick={() => setDate(today())}>Hoje</Button>
           <Button variant="outline" size="icon" onClick={() => moveDate(1)}><ChevronRight className="h-4 w-4" /></Button>
@@ -263,7 +263,7 @@ function AgendaPage() {
 
       {error && <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
         <Summary label="Agendamentos" value={String(total)} />
         <Summary label="Valor previsto" value={money(revenue)} />
         <Summary label="Origem online" value={String(items.filter((item) => item.source === "online").length)} />
@@ -272,7 +272,7 @@ function AgendaPage() {
       <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
         <div className="flex flex-col gap-3 border-b bg-muted/20 p-4 lg:flex-row lg:items-center">
           <div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar cliente, telefone ou placa..." value={query} onChange={(e) => setQuery(e.target.value)} /></div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             {statuses.map((status) => <button key={status.value} type="button" onClick={() => setFilter(status.value)} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${filter === status.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted"}`}>{status.label}</button>)}
             <Button variant="ghost" size="icon" onClick={() => void load()} aria-label="Atualizar"><RefreshCw className="h-4 w-4" /></Button>
           </div>
@@ -293,7 +293,7 @@ function AgendaPage() {
                 <div key={key} className="grid min-h-[64px] grid-cols-[70px_1fr] border-b last:border-b-0">
                   <div className="border-r px-3 py-3 text-xs font-medium text-muted-foreground">{key}</div>
                   <div className="relative p-2">
-                    {atTime.length === 0 ? <div className="h-10 border-t border-dashed border-border/50" /> : <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">{atTime.map((item) => <AppointmentCard key={item.id} item={item} onStatus={changeStatus} onCancel={cancel} onWhatsApp={whatsapp} />)}</div>}
+                    {atTime.length === 0 ? <div className="h-10 border-t border-dashed border-border/50" /> : <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{atTime.map((item) => <AppointmentCard key={item.id} item={item} onStatus={changeStatus} onCancel={cancel} onWhatsApp={whatsapp} />)}</div>}
                   </div>
                 </div>
               );
@@ -333,7 +333,7 @@ function AgendaPage() {
             </div>
             <div className="rounded-xl border bg-muted/20 p-4">
               <p className="mb-3 text-sm font-semibold">Dados do veículo</p>
-              <div className="grid gap-3 sm:grid-cols-3"><div><Label>Placa</Label><Input className="mt-2" value={plate} onChange={(e) => setPlate(e.target.value.toUpperCase())} /></div><div><Label>Marca</Label><Input className="mt-2" value={brand} onChange={(e) => setBrand(e.target.value)} /></div><div><Label>Modelo</Label><Input className="mt-2" value={model} onChange={(e) => setModel(e.target.value)} /></div></div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3"><div><Label>Placa</Label><Input className="mt-2" value={plate} onChange={(e) => setPlate(e.target.value.toUpperCase())} /></div><div><Label>Marca</Label><Input className="mt-2" value={brand} onChange={(e) => setBrand(e.target.value)} /></div><div><Label>Modelo</Label><Input className="mt-2" value={model} onChange={(e) => setModel(e.target.value)} /></div></div>
             </div>
             <div><Label>Observações</Label><Textarea className="mt-2" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
             <div className="rounded-xl bg-primary/5 p-4 text-sm"><span className="text-muted-foreground">{serviceIds.length} serviço(s) · </span><strong>{money(serviceIds.reduce((sum, id) => sum + Number(services.find((service) => service.id === id)?.price ?? 0), 0))}</strong></div>
