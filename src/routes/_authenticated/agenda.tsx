@@ -586,7 +586,7 @@ function AgendaPage() {
               <div className="mt-2 grid gap-2">{compatible.map((service) => <label key={service.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${serviceIds.includes(service.id) ? "border-primary bg-primary/10" : "border-border"}`}><input type="checkbox" checked={serviceIds.includes(service.id)} onChange={() => setServiceIds((current) => current.includes(service.id) ? current.filter((id) => id !== service.id) : [...current, service.id])} /><span className="flex-1 text-sm font-medium">{service.name}</span><span className="text-xs text-muted-foreground">{service.estimated_duration ?? 60} min · {money(Number(service.price))}</span></label>)}</div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div><Label>Data</Label><Input className="mt-2" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+              <div><Label>Data</Label><Input className="mt-2" type="date" min={today()} value={date < today() ? today() : date} onChange={(e) => setDate(e.target.value)} /></div>
               <div><Label>Horário *</Label><select className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm" value={time} onChange={(e) => setTime(e.target.value)} disabled={!serviceIds.length}><option value="">Selecione um horário</option>{slots.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</select></div>
             </div>
             <div className="rounded-xl border bg-muted/20 p-4">
