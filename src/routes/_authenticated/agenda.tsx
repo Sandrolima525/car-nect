@@ -143,18 +143,26 @@ function AgendaPage() {
       ]);
 
       if (appointmentsRes.error) throw appointmentsRes.error;
-      if (blocksRes.error) throw blocksRes.error;
-      if (customersRes.error) throw customersRes.error;
-
-      setCustomers((customersRes.data ?? []) as CustomerSuggestion[]);
-      setBlocks((blocksRes.data ?? []) as BookingBlock[]);
+      // Bloqueios e clientes são recursos auxiliares: um problema de RLS neles
+      // não pode impedir a Agenda de abrir.
+      if (blocksRes.error) {
+        setBlocks([]);
+        console.warn("Não foi possível carregar bloqueios:", blocksRes.error.message);
+      } else {
+        setBlocks((blocksRes.data ?? []) as BookingBlock[]);
+      }
+      if (customersRes.error) {
+        setCustomers([]);
+        console.warn("Não foi possível carregar clientes:", customersRes.error.message);
+      } else {
+        setCustomers((customersRes.data ?? []) as CustomerSuggestion[]);
+      }
 
       const rows = appointmentsRes.data ?? [];
       const ids = rows.map((row) => row.id);
       const links = ids.length
         ? await (supabase as any).from("appointment_services").select("appointment_id,service_id,price,duration_minutes,service:services(id,name)").in("appointment_id", ids)
         : { data: [], error: null };
-      if (links.error) throw links.error;
 
       const grouped = new Map<string, any[]>();
       for (const link of links.data ?? []) grouped.set(link.appointment_id, [...(grouped.get(link.appointment_id) ?? []), link]);
