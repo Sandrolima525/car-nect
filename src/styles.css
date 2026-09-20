@@ -83,6 +83,20 @@
   --warning: oklch(0.8 0.15 75); --warning-foreground: oklch(0.92 0.06 80);
 }
 
+.app-card {
+  border: 1px solid color-mix(in oklch, var(--border) 78%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in oklch, var(--card) 96%, transparent);
+  box-shadow: 0 10px 30px color-mix(in oklch, var(--foreground) 5%, transparent);
+}
+
+@media (max-width: 639px) {
+  html { font-size: 15px; }
+  body { overflow-x: hidden; }
+  button, [role="button"], input, select, textarea { min-height: 40px; }
+  .recharts-responsive-container { min-width: 0 !important; }
+}
+
 @layer base {
   * { border-color: var(--color-border); }
   html { scroll-behavior: smooth; }
