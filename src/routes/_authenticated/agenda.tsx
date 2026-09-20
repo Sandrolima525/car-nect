@@ -253,11 +253,11 @@ function AgendaPage() {
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Agenda</h1>
           <p className="text-sm capitalize text-muted-foreground">{new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</p>
         </div>
-        <div className="grid grid-cols-[44px_1fr_44px] gap-2 sm:flex sm:flex-wrap">
-          <Button variant="outline" size="icon" className="w-full" onClick={() => moveDate(-1)} aria-label="Dia anterior"><ChevronLeft className="h-4 w-4" /></Button>
-          <Button variant="outline" className="w-full" onClick={() => setDate(today())}>Hoje</Button>
-          <Button variant="outline" size="icon" className="w-full" onClick={() => moveDate(1)} aria-label="Próximo dia"><ChevronRight className="h-4 w-4" /></Button>
-          <Button className="col-span-3 w-full sm:col-span-1 sm:w-auto" onClick={() => { setError(""); setOpen(true); }}><Plus className="mr-2 h-4 w-4" />Novo agendamento</Button>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <Button variant="outline" size="icon" onClick={() => moveDate(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="outline" onClick={() => setDate(today())}>Hoje</Button>
+          <Button variant="outline" size="icon" onClick={() => moveDate(1)}><ChevronRight className="h-4 w-4" /></Button>
+          <Button onClick={() => { setError(""); setOpen(true); }}><Plus className="mr-2 h-4 w-4" />Novo agendamento</Button>
         </div>
       </header>
 
@@ -272,9 +272,9 @@ function AgendaPage() {
       <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
         <div className="flex flex-col gap-3 border-b bg-muted/20 p-4 lg:flex-row lg:items-center">
           <div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar cliente, telefone ou placa..." value={query} onChange={(e) => setQuery(e.target.value)} /></div>
-          <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-            {statuses.map((status) => <button key={status.value} type="button" onClick={() => setFilter(status.value)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${filter === status.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted"}`}>{status.label}</button>)}
-            <Button className="ml-auto shrink-0" variant="ghost" size="icon" onClick={() => void load()} aria-label="Atualizar"><RefreshCw className="h-4 w-4" /></Button>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            {statuses.map((status) => <button key={status.value} type="button" onClick={() => setFilter(status.value)} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${filter === status.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted"}`}>{status.label}</button>)}
+            <Button variant="ghost" size="icon" onClick={() => void load()} aria-label="Atualizar"><RefreshCw className="h-4 w-4" /></Button>
           </div>
         </div>
 
@@ -301,8 +301,8 @@ function AgendaPage() {
           </div>
         </div>
 
-        <div className="space-y-2 bg-muted/10 p-2 lg:hidden sm:space-y-3 sm:p-3">
-          {loading ? <div className="rounded-xl bg-card p-8 text-center text-sm text-muted-foreground">Carregando agenda...</div> : filtered.length === 0 ? <div className="rounded-xl bg-card p-10 text-center text-sm text-muted-foreground">Nenhum agendamento neste dia.</div> : filtered.map((item) => <AppointmentCard key={item.id} item={item} onStatus={changeStatus} onCancel={cancel} onWhatsApp={whatsapp} />)}
+        <div className="divide-y lg:hidden">
+          {loading ? <div className="p-8 text-center text-sm text-muted-foreground">Carregando agenda...</div> : filtered.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">Nenhum agendamento neste dia.</div> : filtered.map((item) => <div key={item.id} className="p-3"><AppointmentCard item={item} onStatus={changeStatus} onCancel={cancel} onWhatsApp={whatsapp} /></div>)}
         </div>
       </Card>
 
@@ -312,7 +312,7 @@ function AgendaPage() {
       </div>
 
       <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) resetForm(); }}>
-        <DialogContent className="max-h-[92dvh] w-[calc(100%-1rem)] overflow-y-auto rounded-2xl p-4 sm:max-w-2xl sm:p-6">
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader><DialogTitle>Novo agendamento</DialogTitle></DialogHeader>
           <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -333,7 +333,7 @@ function AgendaPage() {
             </div>
             <div className="rounded-xl border bg-muted/20 p-4">
               <p className="mb-3 text-sm font-semibold">Dados do veículo</p>
-              <div className="grid gap-3 sm:grid-cols-3"><div><Label>Placa</Label><Input className="mt-2" value={plate} onChange={(e) => setPlate(e.target.value.toUpperCase())} /></div><div><Label>Marca</Label><Input className="mt-2" value={brand} onChange={(e) => setBrand(e.target.value)} /></div><div><Label>Modelo</Label><Input className="mt-2" value={model} onChange={(e) => setModel(e.target.value)} /></div></div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3"><div><Label>Placa</Label><Input className="mt-2" value={plate} onChange={(e) => setPlate(e.target.value.toUpperCase())} /></div><div><Label>Marca</Label><Input className="mt-2" value={brand} onChange={(e) => setBrand(e.target.value)} /></div><div><Label>Modelo</Label><Input className="mt-2" value={model} onChange={(e) => setModel(e.target.value)} /></div></div>
             </div>
             <div><Label>Observações</Label><Textarea className="mt-2" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
             <div className="rounded-xl bg-primary/5 p-4 text-sm"><span className="text-muted-foreground">{serviceIds.length} serviço(s) · </span><strong>{money(serviceIds.reduce((sum, id) => sum + Number(services.find((service) => service.id === id)?.price ?? 0), 0))}</strong></div>
@@ -353,18 +353,18 @@ function AppointmentCard({ item, onStatus, onCancel, onWhatsApp }: { item: Appoi
     delivered: ["Finalizado", "bg-muted text-muted-foreground"],
   }[item.status] ?? ["Cancelado", "bg-muted text-muted-foreground"];
   return (
-    <div className="rounded-2xl border bg-card p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
+    <div className="rounded-xl border bg-card p-3 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex min-w-0 items-center gap-2"><UserRound className="h-4 w-4 shrink-0 text-primary" /><p className="truncate text-[15px] font-semibold">{item.customer_name}</p></div>
+          <div className="flex items-center gap-2"><UserRound className="h-4 w-4 shrink-0 text-primary" /><p className="truncate font-semibold">{item.customer_name}</p></div>
           <p className="mt-1 truncate text-xs text-muted-foreground">{item.services.map((service) => service.name).join(" + ") || "Serviço"} · {item.total_duration} min</p>
           <p className="mt-1 text-xs text-muted-foreground">{item.vehicle_plate || "Sem placa"} · {item.source === "online" ? "Online" : "Manual"}</p>
         </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${status[1]}`}>{status[0]}</span>
+        <span className="shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${status[1]}">{status[0]}</span>
       </div>
-      <div className="mt-4 flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
-        <span className="flex items-center gap-1 text-sm font-bold"><Clock3 className="h-3.5 w-3.5 text-primary" />{item.appointment_time.slice(0, 5)} <span className="font-normal text-muted-foreground">·</span> {money(item.total_price)}</span>
-        <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1 text-sm font-bold"><Clock3 className="h-3.5 w-3.5 text-primary" />{item.appointment_time.slice(0, 5)} · {money(item.total_price)}</span>
+        <div className="flex gap-1">
           {item.customer_phone && <Button size="icon" variant="ghost" onClick={() => onWhatsApp(item)} aria-label="WhatsApp"><MessageCircle className="h-4 w-4" /></Button>}
           {item.status !== "delivered" && <Button size="sm" variant="outline" onClick={() => onStatus(item)}>{item.status === "pending" ? "Iniciar" : item.status === "confirmed" ? "Pronto" : "Finalizar"}</Button>}
           {item.status === "pending" && <Button size="icon" variant="ghost" onClick={() => onCancel(item)} aria-label="Cancelar"><X className="h-4 w-4" /></Button>}
