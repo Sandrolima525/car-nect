@@ -28,6 +28,20 @@ type BookingBlock = {
   reason: string | null;
 };
 
+type CustomerSuggestion = {
+  id: string;
+  name: string;
+  phone: string | null;
+};
+
+type CustomerVehicle = {
+  id: string;
+  plate: string | null;
+  brand: string | null;
+  model: string | null;
+  category: string | null;
+};
+
 type Appointment = {
   id: string;
   customer_id: string | null;
@@ -76,6 +90,11 @@ function AgendaPage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [customerSuggestions, setCustomerSuggestions] = useState<CustomerSuggestion[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customerVehicles, setCustomerVehicles] = useState<CustomerVehicle[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState("");
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
   const [vehicleCategory, setVehicleCategory] = useState("Hatch");
   const [plate, setPlate] = useState("");
   const [brand, setBrand] = useState("");
@@ -162,6 +181,78 @@ function AgendaPage() {
   }, [vehicleCategory, compatible]);
 
   useEffect(() => {
+    if (!open || selectedCustomerId || name.trim().length < 2) {
+      setCustomerSuggestions([]);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setSearchingCustomers(true);
+      const result = await supabase
+        .from("customers")
+        .select("id,name,phone")
+        .eq("company_id", companyId)
+        .ilike("name", `%${name.trim()}%`)
+        .order("name")
+        .limit(8);
+
+      if (!result.error) setCustomerSuggestions((result.data ?? []) as CustomerSuggestion[]);
+      setSearchingCustomers(false);
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [open, name, selectedCustomerId, companyId]);
+
+  const selectCustomer = async (customer: CustomerSuggestion) => {
+    setSelectedCustomerId(customer.id);
+    setCustomerSuggestions([]);
+    setName(customer.name);
+    setPhone(customer.phone ?? "");
+    setCustomerVehicles([]);
+    setSelectedVehicleId("");
+
+    const result = await supabase
+      .from("vehicles")
+      .select("id,plate,brand,model,category")
+      .eq("company_id", companyId)
+      .eq("customer_id", customer.id)
+      .order("created_at", { ascending: false });
+
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+
+    const vehicles = (result.data ?? []) as CustomerVehicle[];
+    setCustomerVehicles(vehicles);
+
+    if (vehicles.length === 1) {
+      const vehicle = vehicles[0];
+      setSelectedVehicleId(vehicle.id);
+      setVehicleCategory(vehicle.category || "Hatch");
+      setPlate(vehicle.plate ?? "");
+      setBrand(vehicle.brand ?? "");
+      setModel(vehicle.model ?? "");
+    }
+  };
+
+  const selectVehicle = (vehicleId: string) => {
+    const vehicle = customerVehicles.find((item) => item.id === vehicleId);
+    if (!vehicle) return;
+    setSelectedVehicleId(vehicle.id);
+    setVehicleCategory(vehicle.category || "Hatch");
+    setPlate(vehicle.plate ?? "");
+    setBrand(vehicle.brand ?? "");
+    setModel(vehicle.model ?? "");
+  };
+
+  const clearSelectedCustomer = () => {
+    setSelectedCustomerId("");
+    setCustomerVehicles([]);
+    setSelectedVehicleId("");
+  };
+
+  useEffect(() => {
     if (!open || !serviceIds.length || !bookingSlug) {
       setSlots([]);
       setTime("");
@@ -189,6 +280,7 @@ function AgendaPage() {
 
   const resetForm = () => {
     setName(""); setPhone(""); setVehicleCategory("Hatch"); setPlate(""); setBrand(""); setModel("");
+    setCustomerSuggestions([]); setSelectedCustomerId(""); setCustomerVehicles([]); setSelectedVehicleId("");
     setServiceIds([]); setTime(""); setSlots([]); setNotes("");
   };
 
@@ -451,9 +543,51 @@ function AgendaPage() {
           <DialogHeader><DialogTitle>Novo agendamento</DialogTitle></DialogHeader>
           <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div><Label>Nome do cliente *</Label><Input className="mt-2" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" /></div>
+              <div className="relative">
+                <Label>Nome do cliente *</Label>
+                <Input
+                  className="mt-2"
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); clearSelectedCustomer(); }}
+                  placeholder="Digite o nome do cliente"
+                  autoComplete="off"
+                />
+                {searchingCustomers && <p className="mt-1 text-xs text-muted-foreground">Buscando clientes...</p>}
+                {customerSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border bg-background shadow-lg">
+                    {customerSuggestions.map((customer) => (
+                      <button
+                        key={customer.id}
+                        type="button"
+                        className="flex w-full items-center justify-between gap-3 border-b p-3 text-left last:border-b-0 hover:bg-muted"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => void selectCustomer(customer)}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold">{customer.name}</span>
+                          <span className="block truncate text-xs text-muted-foreground">{customer.phone || "Sem WhatsApp cadastrado"}</span>
+                        </span>
+                        <UserRound className="h-4 w-4 shrink-0 text-primary" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div><Label>WhatsApp *</Label><Input className="mt-2" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(48) 99999-9999" /></div>
             </div>
+            {selectedCustomerId && customerVehicles.length > 1 && (
+              <div>
+                <Label>Veículo do cliente</Label>
+                <select className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm" value={selectedVehicleId} onChange={(e) => selectVehicle(e.target.value)}>
+                  <option value="">Selecione o veículo</option>
+                  {customerVehicles.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id}>
+                      {[vehicle.plate, vehicle.brand, vehicle.model].filter(Boolean).join(" · ") || "Veículo sem identificação"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <Label>Veículo</Label>
               <div className="mt-2 grid grid-cols-3 gap-2">{["Hatch", "Sedan", "SUV/Picape"].map((value) => <button key={value} type="button" onClick={() => setVehicleCategory(value)} className={`rounded-xl border p-3 text-sm font-semibold ${vehicleCategory === value ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>{value}</button>)}</div>
