@@ -90,11 +90,10 @@ function AgendaPage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [customerSuggestions, setCustomerSuggestions] = useState<CustomerSuggestion[]>([]);
+  const [customers, setCustomers] = useState<CustomerSuggestion[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerVehicles, setCustomerVehicles] = useState<CustomerVehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
-  const [searchingCustomers, setSearchingCustomers] = useState(false);
   const [vehicleCategory, setVehicleCategory] = useState("Hatch");
   const [plate, setPlate] = useState("");
   const [brand, setBrand] = useState("");
@@ -111,7 +110,7 @@ function AgendaPage() {
       const id = companyId || await getCurrentCompanyId();
       setCompanyId(id);
 
-      const [companyRes, servicesRes, appointmentsRes, blocksRes] = await Promise.all([
+      const [companyRes, servicesRes, appointmentsRes, blocksRes, customersRes] = await Promise.all([
         supabase.from("companies").select("name,public_booking_slug").eq("id", id).maybeSingle(),
         supabase.from("services").select("id,name,price,estimated_duration,vehicle_category").eq("company_id", id).eq("active", true).order("name"),
         supabase.from("appointments")
@@ -120,12 +119,18 @@ function AgendaPage() {
         supabase.from("booking_blocks")
           .select("id,block_date,start_time,end_time,reason")
           .eq("company_id", id).eq("block_date", date).order("start_time"),
+        supabase.from("customers")
+          .select("id,name,phone")
+          .eq("company_id", id).order("name"),
       ]);
 
       if (companyRes.error) throw companyRes.error;
       if (servicesRes.error) throw servicesRes.error;
       if (appointmentsRes.error) throw appointmentsRes.error;
       if (blocksRes.error) throw blocksRes.error;
+      if (customersRes.error) throw customersRes.error;
+
+      setCustomers((customersRes.data ?? []) as CustomerSuggestion[]);
 
       setCompanyName(companyRes.data?.name ?? "Sua empresa");
       setBookingSlug(companyRes.data?.public_booking_slug ?? "");
@@ -180,28 +185,13 @@ function AgendaPage() {
     setServiceIds((current) => current.filter((id) => compatible.some((service) => service.id === id)));
   }, [vehicleCategory, compatible]);
 
-  useEffect(() => {
-    if (!open || selectedCustomerId || name.trim().length < 2) {
-      setCustomerSuggestions([]);
-      return;
-    }
-
-    const timer = window.setTimeout(async () => {
-      setSearchingCustomers(true);
-      const result = await supabase
-        .from("customers")
-        .select("id,name,phone")
-        .eq("company_id", companyId)
-        .ilike("name", `%${name.trim()}%`)
-        .order("name")
-        .limit(8);
-
-      if (!result.error) setCustomerSuggestions((result.data ?? []) as CustomerSuggestion[]);
-      setSearchingCustomers(false);
-    }, 250);
-
-    return () => window.clearTimeout(timer);
-  }, [open, name, selectedCustomerId, companyId]);
+  const customerSuggestions = useMemo(() => {
+    if (!open || selectedCustomerId || name.trim().length < 2) return [];
+    const term = name.trim().toLowerCase();
+    return customers
+      .filter((customer) => customer.name.toLowerCase().includes(term) || (customer.phone ?? "").includes(term))
+      .slice(0, 8);
+  }, [open, selectedCustomerId, name, customers]);
 
   const selectCustomer = async (customer: CustomerSuggestion) => {
     setSelectedCustomerId(customer.id);
@@ -552,7 +542,6 @@ function AgendaPage() {
                   placeholder="Digite o nome do cliente"
                   autoComplete="off"
                 />
-                {searchingCustomers && <p className="mt-1 text-xs text-muted-foreground">Buscando clientes...</p>}
                 {customerSuggestions.length > 0 && (
                   <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border bg-background shadow-lg">
                     {customerSuggestions.map((customer) => (
