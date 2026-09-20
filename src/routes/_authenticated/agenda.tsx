@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentCompanyId } from "@/services/company";
 
@@ -104,6 +106,7 @@ function AgendaPage() {
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [time, setTime] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [notes, setNotes] = useState("");
 
   const load = async () => {
@@ -402,19 +405,33 @@ function AgendaPage() {
           <p className="text-sm capitalize text-muted-foreground">{new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex h-11 w-full items-center justify-center overflow-hidden rounded-xl border bg-background px-4 shadow-sm sm:w-auto sm:min-w-40" title="Selecionar data">
-            <CalendarDays className="mr-2 h-4 w-4 shrink-0 text-primary" />
-            <span className="text-sm font-semibold capitalize">
-              {new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "")}
-            </span>
-            <input
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              aria-label="Selecionar data da agenda"
-              className="absolute inset-0 cursor-pointer opacity-0"
-            />
-          </div>
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="h-11 w-full justify-center rounded-xl px-4 shadow-sm sm:w-auto sm:min-w-40" title="Selecionar data">
+                <CalendarDays className="mr-2 h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold capitalize">
+                  {new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "")}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={new Date(date + "T12:00:00")}
+                onSelect={(selected) => {
+                  if (!selected) return;
+                  const currentToday = today();
+                  const selectedDate = selected.toLocaleDateString("en-CA");
+                  if (selectedDate < currentToday) return;
+                  setDate(selectedDate);
+                  setCalendarOpen(false);
+                }}
+                disabled={{ before: new Date() }}
+                hidden={{ before: new Date() }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
           <div className="grid grid-cols-2 gap-2 sm:flex">
             <Button variant="outline" className="h-11 rounded-xl" onClick={openBlockDialog}>
               <LockKeyhole className="mr-2 h-4 w-4" />Bloquear
@@ -596,13 +613,29 @@ function AgendaPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label>Data</Label>
-                <Input
-                  className="mt-2"
-                  type="date"
-                  min={today()}
-                  value={date < today() ? today() : date}
-                  onChange={(e) => setDate(e.target.value < today() ? today() : e.target.value)}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="mt-2 h-10 w-full justify-start rounded-md px-3 font-normal">
+                      <CalendarDays className="mr-2 h-4 w-4 text-primary" />
+                      {new Date((date < today() ? today() : date) + "T12:00:00").toLocaleDateString("pt-BR")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={new Date((date < today() ? today() : date) + "T12:00:00")}
+                      onSelect={(selected) => {
+                        if (!selected) return;
+                        const selectedDate = selected.toLocaleDateString("en-CA");
+                        if (selectedDate < today()) return;
+                        setDate(selectedDate);
+                      }}
+                      disabled={{ before: new Date() }}
+                      hidden={{ before: new Date() }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div><Label>Horário *</Label><select className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm" value={time} onChange={(e) => setTime(e.target.value)} disabled={!serviceIds.length}><option value="">Selecione um horário</option>{slots.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</select></div>
             </div>
