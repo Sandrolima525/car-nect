@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, DollarSign, Plus, TrendingUp, Users, CheckCircle2, Hourglass, XCircle } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, DollarSign, Plus, TrendingUp, Users, CheckCircle2, Hourglass, XCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,7 +33,7 @@ function DashboardPage() {
   const [servicesCount, setServicesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [masterMode, setMasterMode] = useState(false);
+  const [masterMode, setMasterMode] = useState(false);\n  const [showFinancials, setShowFinancials] = useState(false);
 
   const load = async () => {
     try {
@@ -102,17 +102,23 @@ function DashboardPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 pb-10">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto w-full max-w-7xl space-y-5 overflow-x-hidden pb-10 sm:space-y-6">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><TrendingUp className="h-4 w-4" />Visão financeira</div><h1 className="mt-1 text-3xl font-bold tracking-tight">Dashboard</h1><p className="text-sm text-muted-foreground">Acompanhe faturamento, agenda e crescimento em um só lugar.</p></div>
-        <div className="flex flex-wrap gap-2">{masterMode && <Button variant="outline" onClick={async () => { await exitCompanyAsMaster(); location.href = "/admin"; }}>Voltar ao Master</Button>}<Button variant="outline" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button><div className="flex h-10 items-center rounded-xl border bg-background px-3 text-sm font-semibold">{new Date(month + "-15T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div><Button variant="outline" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button><Button asChild><Link to="/agenda"><Plus className="mr-2 h-4 w-4" />Agendar</Link></Button></div>
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">{masterMode && <Button variant="outline" onClick={async () => { await exitCompanyAsMaster(); location.href = "/admin"; }}>Voltar ao Master</Button>}<Button variant="outline" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button><div className="flex h-10 min-w-0 flex-1 items-center justify-center rounded-xl border bg-background px-3 text-center text-xs font-semibold capitalize sm:flex-none sm:text-sm">{new Date(month + "-15T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div><Button variant="outline" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button><Button asChild><Link to="/agenda"><Plus className="mr-2 h-4 w-4" />Agendar</Link></Button></div>
       </header>
 
       {error && <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Kpi icon={DollarSign} label="Faturamento realizado" value={loading ? "—" : money(billed)} helper={finished.length + " atendimento(s) finalizado(s)"} />
-        <Kpi icon={TrendingUp} label="Faturamento previsto" value={loading ? "—" : money(projected)} helper={items.length + " agendamento(s) no mês"} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <FinancialKpi
+          realized={loading ? "—" : money(billed)}
+          projected={loading ? "—" : money(projected)}
+          realizedHelper={finished.length + " atendimento(s) finalizado(s)"}
+          projectedHelper={items.length + " agendamento(s) no mês"}
+          visible={showFinancials}
+          onToggle={() => setShowFinancials((value) => !value)}
+        />
         <Kpi icon={CalendarDays} label="Hoje" value={loading ? "—" : String(todayItems.length)} helper={money(todayBilled) + " realizado hoje"} />
         <Kpi icon={Users} label="Clientes" value={loading ? "—" : String(customers)} helper={online + " agendamento(s) online no mês"} />
       </div>
@@ -169,6 +175,37 @@ function DashboardPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function FinancialKpi({ realized, projected, realizedHelper, projectedHelper, visible, onToggle }: { realized: string; projected: string; realizedHelper: string; projectedHelper: string; visible: boolean; onToggle: () => void }) {
+  const hidden = "••••••";
+  return (
+    <Card className="rounded-2xl border-border/60 bg-gradient-to-br from-primary/[0.08] to-card shadow-sm sm:col-span-2 xl:col-span-1">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Faturamento</p>
+            <p className="mt-1 text-xs text-muted-foreground">Visão financeira do mês</p>
+          </div>
+          <button type="button" onClick={onToggle} aria-label={visible ? "Ocultar valores" : "Mostrar valores"} className="rounded-xl p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+            {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        <div className="mt-5 grid grid-cols-2 divide-x rounded-xl border bg-background/70">
+          <div className="min-w-0 p-3 sm:p-4">
+            <p className="text-[11px] font-medium text-muted-foreground">Realizado</p>
+            <p className="mt-1 truncate text-lg font-black tracking-tight sm:text-xl">{visible ? realized : hidden}</p>
+            <p className="mt-1 truncate text-[10px] text-muted-foreground">{realizedHelper}</p>
+          </div>
+          <div className="min-w-0 p-3 sm:p-4">
+            <p className="text-[11px] font-medium text-muted-foreground">Previsto</p>
+            <p className="mt-1 truncate text-lg font-black tracking-tight sm:text-xl">{visible ? projected : hidden}</p>
+            <p className="mt-1 truncate text-[10px] text-muted-foreground">{projectedHelper}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
