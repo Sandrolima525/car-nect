@@ -375,7 +375,7 @@ function AppointmentCard({ item, onStatus, onCancel, onWhatsApp }: { item: Appoi
           <p className="mt-1 truncate text-xs text-muted-foreground">{item.services.map((service) => service.name).join(" + ") || "Serviço"} · {item.total_duration} min</p>
           <p className="mt-1 text-xs text-muted-foreground">{item.vehicle_plate || "Sem placa"} · {item.source === "online" ? "Online" : "Manual"}</p>
         </div>
-        <span className="shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${status[1]}">{status[0]}</span>
+        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${status[1]}`}>{status[0]}</span>
       </div>
       <div className="mt-3 flex items-center justify-between gap-2">
         <span className="flex items-center gap-1 text-sm font-bold"><Clock3 className="h-3.5 w-3.5 text-primary" />{item.appointment_time.slice(0, 5)} · {money(item.total_price)}</span>
