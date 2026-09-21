@@ -10,7 +10,8 @@ import { NAV_ITEMS, findNavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/types/database";
 import { brandCssVariables, DEFAULT_BRAND, type BrandColors } from "@/lib/branding";
-import { supabase } from "@/integrations/supabase/client";\nimport { exitCompanyAsMaster } from "@/services/company";
+import { supabase } from "@/integrations/supabase/client";
+import { exitCompanyAsMaster } from "@/services/company";
 
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("");
@@ -67,10 +68,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { profile, company, signOut } = useAuth();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [brand, setBrand] = useState<BrandColors>(DEFAULT_BRAND);\n  const [masterMode, setMasterMode] = useState(false);
+  const [brand, setBrand] = useState<BrandColors>(DEFAULT_BRAND);
+  const [masterMode, setMasterMode] = useState(false);
   const current = findNavItem(pathname);
   const displayName = profile?.full_name ?? profile?.email ?? "Usuário";
-  useEffect(() => { setMobileOpen(false); }, [pathname]);\n  useEffect(() => {\n    void supabase.rpc("is_platform_admin").then(({ data }) => setMasterMode(data === true));\n  }, []);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    void supabase.rpc("is_platform_admin").then(({ data }) => setMasterMode(data === true));
+  }, []);
   useEffect(() => {
     if (!company?.id) return;
     const loadBrand = async () => {
@@ -104,7 +109,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <DropdownMenuContent align="end" className="w-56"><DropdownMenuLabel><span className="block truncate">{displayName}</span><span className="block text-xs font-normal text-muted-foreground">{profile ? ROLE_LABELS[profile.role as keyof typeof ROLE_LABELS] : "—"}</span></DropdownMenuLabel><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => void signOut()}><LogOut className="mr-2 h-4 w-4" />Sair</DropdownMenuItem></DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="mx-auto w-full min-w-0 max-w-[1600px] flex-1 overflow-x-hidden px-3 py-5 sm:px-6 sm:py-7 lg:px-8">\n          {masterMode && <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">\n            <div className="min-w-0"><p className="text-sm font-semibold">Modo Master ativo</p><p className="text-xs text-muted-foreground">Você está acessando esta empresa pelo painel administrativo.</p></div>\n            <Button size="sm" variant="outline" className="w-full shrink-0 sm:w-auto" onClick={async () => { await exitCompanyAsMaster(); location.href = "/admin"; }}>Voltar ao Master</Button>\n          </div>}\n          {children}\n        </main>
+        <main className="mx-auto w-full min-w-0 max-w-[1600px] flex-1 overflow-x-hidden px-3 py-5 sm:px-6 sm:py-7 lg:px-8">
+          {masterMode && <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+            <div className="min-w-0"><p className="text-sm font-semibold">Modo Master ativo</p><p className="text-xs text-muted-foreground">Você está acessando esta empresa pelo painel administrativo.</p></div>
+            <Button size="sm" variant="outline" className="w-full shrink-0 sm:w-auto" onClick={async () => { await exitCompanyAsMaster(); location.href = "/admin"; }}>Voltar ao Master</Button>
+          </div>}
+          {children}
+        </main>
       </div>
     </div>
   );
