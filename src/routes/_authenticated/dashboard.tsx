@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, DollarSign, Plus, TrendingUp, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, DollarSign, Plus, TrendingUp, Users, CheckCircle2, Hourglass, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,15 +84,12 @@ function DashboardPage() {
   }, [items, month]);
 
   const maxDay = Math.max(1, ...days.map((day) => day.revenue));
-  const serviceRanking = useMemo(() => {
-    const map = new Map<string, { count: number; value: number }>();
-    for (const item of items) {
-      const name = item.customer_name ? "Atendimento" : "Serviço";
-      const current = map.get(name) ?? { count: 0, value: 0 };
-      current.count += 1; current.value += item.total_price; map.set(name, current);
-    }
-    return Array.from(map.entries()).map(([name, value]) => ({ name, ...value })).sort((a, b) => b.value - a.value).slice(0, 5);
-  }, [items]);
+  const statusSummary = useMemo(() => ({
+    pending: items.filter((item) => item.status === "pending").length,
+    confirmed: items.filter((item) => item.status === "confirmed").length,
+    completed: items.filter((item) => item.status === "completed" || item.status === "delivered").length,
+    cancelled: items.filter((item) => item.status === "cancelled").length,
+  }), [items]);
 
   const moveMonth = (offset: number) => {
     const year = Number(month.slice(0, 4));
@@ -115,6 +112,13 @@ function DashboardPage() {
         <Kpi icon={TrendingUp} label="Faturamento previsto" value={loading ? "—" : money(projected)} helper={items.length + " agendamento(s) no mês"} />
         <Kpi icon={CalendarDays} label="Hoje" value={loading ? "—" : String(todayItems.length)} helper={money(todayBilled) + " realizado hoje"} />
         <Kpi icon={Users} label="Clientes" value={loading ? "—" : String(customers)} helper={online + " agendamento(s) online no mês"} />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-4">
+        <MiniStatus icon={Hourglass} label="Aguardando" value={statusSummary.pending} />
+        <MiniStatus icon={CalendarDays} label="Confirmados" value={statusSummary.confirmed} />
+        <MiniStatus icon={CheckCircle2} label="Concluídos" value={statusSummary.completed} />
+        <MiniStatus icon={XCircle} label="Cancelados" value={statusSummary.cancelled} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
@@ -170,3 +174,5 @@ function Kpi({ icon: Icon, label, value, helper }: { icon: typeof DollarSign; la
 }
 function Line({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between border-b border-border/60 pb-3 text-sm last:border-0 last:pb-0"><span className="text-muted-foreground">{label}</span><strong>{value}</strong></div>; }
 function Insight({ icon: Icon, text }: { icon: typeof DollarSign; text: string }) { return <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3 text-sm"><Icon className="h-4 w-4 shrink-0 text-primary" /><span>{text}</span></div>; }
+
+function MiniStatus({ icon: Icon, label, value }: { icon: typeof DollarSign; label: string; value: number }) { return <Card className="rounded-2xl border-border/60"><CardContent className="flex items-center gap-3 p-4"><div className="rounded-xl bg-primary/10 p-2 text-primary"><Icon className="h-4 w-4" /></div><div><p className="text-xs text-muted-foreground">{label}</p><p className="text-xl font-bold">{value}</p></div></CardContent></Card>; }
