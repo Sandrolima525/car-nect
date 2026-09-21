@@ -4,7 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Clock3, DollarSign, Plus, Tren
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { getCurrentCompanyId } from "@/services/company";
+import { getCurrentCompanyId, exitCompanyAsMaster } from "@/services/company";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({ component: DashboardPage });
 
@@ -33,6 +33,7 @@ function DashboardPage() {
   const [servicesCount, setServicesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [masterMode, setMasterMode] = useState(false);
 
   const load = async () => {
     try {
@@ -62,6 +63,8 @@ function DashboardPage() {
   };
 
   useEffect(() => { void load(); }, [month]);
+
+  useEffect(() => { void supabase.rpc("is_platform_admin").then(({ data }) => setMasterMode(data === true)); }, []);
 
   const finished = items.filter((item) => item.status === "completed" || item.status === "delivered");
   const projected = items.reduce((sum, item) => sum + item.total_price, 0);
@@ -102,7 +105,7 @@ function DashboardPage() {
     <div className="mx-auto max-w-7xl space-y-6 pb-10">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><TrendingUp className="h-4 w-4" />Visão financeira</div><h1 className="mt-1 text-3xl font-bold tracking-tight">Dashboard</h1><p className="text-sm text-muted-foreground">Acompanhe faturamento, agenda e crescimento em um só lugar.</p></div>
-        <div className="flex flex-wrap gap-2"><Button variant="outline" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button><div className="flex h-10 items-center rounded-xl border bg-background px-3 text-sm font-semibold">{new Date(month + "-15T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div><Button variant="outline" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button><Button asChild><Link to="/agenda"><Plus className="mr-2 h-4 w-4" />Agendar</Link></Button></div>
+        <div className="flex flex-wrap gap-2">{masterMode && <Button variant="outline" onClick={async () => { await exitCompanyAsMaster(); location.href = "/admin"; }}>Voltar ao Master</Button>}<Button variant="outline" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button><div className="flex h-10 items-center rounded-xl border bg-background px-3 text-sm font-semibold">{new Date(month + "-15T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div><Button variant="outline" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button><Button asChild><Link to="/agenda"><Plus className="mr-2 h-4 w-4" />Agendar</Link></Button></div>
       </header>
 
       {error && <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
