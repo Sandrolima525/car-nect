@@ -120,7 +120,7 @@ function ServicesPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-10">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><Sparkles className="h-4 w-4" />Catálogo</div><h1 className="mt-1 text-3xl font-bold tracking-tight">Serviços</h1><p className="text-sm text-muted-foreground">Defina o que você oferece, quanto custa e quanto tempo ocupa na agenda.</p></div>
         <Button onClick={() => { reset(); setOpen(true); }}><Plus className="mr-2 h-4 w-4" />Novo serviço</Button>
       </header>
@@ -137,7 +137,7 @@ function ServicesPage() {
       </Card>
 
       {loading ? <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Carregando serviços...</CardContent></Card> : filtered.length === 0 ? <Card><CardContent className="p-10 text-center"><Sparkles className="mx-auto mb-3 h-8 w-8 text-muted-foreground" /><p className="font-medium">Nenhum serviço encontrado.</p><p className="mt-1 text-sm text-muted-foreground">Cadastre o primeiro serviço para liberar a agenda.</p></CardContent></Card> :
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((item) => (
             <Card key={item.id} className="rounded-2xl border-border/60 shadow-sm">
               <CardContent className="p-5">

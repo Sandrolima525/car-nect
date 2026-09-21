@@ -29,7 +29,7 @@ function PublicBookingPage() {
   const [plate, setPlate] = useState("");
   const [vehicleBrand, setVehicleBrand] = useState("");
   const [model, setModel] = useState("");
-  const [date, setDate] = useState(new Date().toLocaleDateString("en-CA"));
+  const [date, setDate] = useState(new Date(Date.now() + 86400000).toLocaleDateString("en-CA"));
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
   const [slots, setSlots] = useState<string[]>([]);

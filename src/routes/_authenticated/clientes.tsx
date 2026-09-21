@@ -123,7 +123,7 @@ function ClientsPage() {
 
       <Card className="rounded-2xl border-border/60"><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nome ou WhatsApp..." /></div></CardContent></Card>
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.5fr)]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.5fr)]">
         <Card className="rounded-2xl border-border/60">
           <CardContent className="p-0">
             <div className="border-b px-5 py-4 text-sm font-semibold">{filtered.length} cliente(s)</div>
@@ -144,7 +144,7 @@ function ClientsPage() {
                   <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => schedule(selected)}><CalendarPlus className="mr-2 h-4 w-4" />Agendar para este cliente</Button>{selected.phone && <Button size="sm" variant="outline" onClick={() => whatsapp(selected.phone)}><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</Button>}</div>
                 </div>
                 {detailLoading ? <p className="text-sm text-muted-foreground">Carregando histórico...</p> : <>
-                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2"><Stat label="Atendimentos" value={String(visits.filter((visit) => visit.status !== "cancelled").length)} /><Stat label="Total gasto" value={money(spent)} /><Stat label="Veículos" value={String(vehicles.length)} /></div>
+                  <div className="grid grid-cols-3 gap-2"><Stat label="Atendimentos" value={String(visits.filter((visit) => visit.status !== "cancelled").length)} /><Stat label="Total gasto" value={money(spent)} /><Stat label="Veículos" value={String(vehicles.length)} /></div>
                   <section><h3 className="mb-2 flex items-center gap-2 font-semibold"><Car className="h-4 w-4" />Veículos</h3>{vehicles.length ? <div className="grid gap-2 sm:grid-cols-2">{vehicles.map((vehicle) => <div key={vehicle.id} className="rounded-xl border p-3"><p className="font-semibold">{vehicle.plate || "Sem placa"}</p><p className="text-xs text-muted-foreground">{[vehicle.brand, vehicle.model, vehicle.category].filter(Boolean).join(" · ")}</p></div>)}</div> : <p className="text-sm text-muted-foreground">Nenhum veículo cadastrado.</p>}</section>
                   <section><h3 className="mb-2 font-semibold">Histórico</h3>{visits.length ? <div className="divide-y rounded-xl border">{visits.map((visit) => <div key={visit.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{visit.services.join(" + ") || "Serviço"}</p><p className="text-xs text-muted-foreground">{new Date(visit.appointment_date + "T12:00:00").toLocaleDateString("pt-BR")} · {visit.appointment_time.slice(0, 5)} · {visit.vehicle_plate || "Sem placa"} · {visit.source === "online" ? "Online" : "Manual"}</p></div><span className="font-semibold">{money(visit.total_price)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">Nenhum atendimento registrado.</p>}</section>
                 </>}

@@ -87,15 +87,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [company?.id]);
 
   return (
-    <div style={brandCssVariables(brand)} className="flex min-h-[100dvh] min-w-0 bg-gradient-to-br from-background via-background to-primary/[0.035]">
+    <div style={brandCssVariables(brand)} className="flex min-h-screen bg-gradient-to-br from-background via-background to-primary/[0.035]">
       <aside className="hidden w-64 shrink-0 border-r border-sidebar-border/70 bg-sidebar/95 shadow-xl shadow-black/[0.04] lg:block"><div className="sticky top-0 h-screen"><SidebarContent /></div></aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-[4.25rem] items-center gap-2 border-b border-border/60 bg-background/85 px-3 py-2 shadow-sm backdrop-blur-2xl sm:gap-3 sm:px-6">
+        <header className="sticky top-0 z-30 flex h-[4.25rem] items-center gap-3 border-b border-border/60 bg-background/80 px-4 shadow-sm backdrop-blur-2xl sm:px-6">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild><Button variant="ghost" size="icon" className="rounded-xl lg:hidden" aria-label="Abrir menu"><Menu className="h-5 w-5" /></Button></SheetTrigger>
             <SheetContent side="left" className="w-72 bg-sidebar p-0"><SheetTitle className="sr-only">Menu de navegação</SheetTitle><SidebarContent onNavigate={() => setMobileOpen(false)} /></SheetContent>
           </Sheet>
-          <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-bold tracking-tight text-foreground sm:text-lg">{current?.label ?? company?.name ?? "Empresa"}</h1>
             {current && current.to !== "/dashboard" && <Breadcrumb className="hidden sm:block"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink asChild><Link to="/dashboard">Início</Link></BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{current.label}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>}
           </div>
@@ -104,7 +104,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <DropdownMenuContent align="end" className="w-56"><DropdownMenuLabel><span className="block truncate">{displayName}</span><span className="block text-xs font-normal text-muted-foreground">{profile ? ROLE_LABELS[profile.role as keyof typeof ROLE_LABELS] : "—"}</span></DropdownMenuLabel><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => void signOut()}><LogOut className="mr-2 h-4 w-4" />Sair</DropdownMenuItem></DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="mx-auto w-full max-w-[1600px] min-w-0 flex-1 overflow-x-hidden px-3 py-4 sm:px-6 sm:py-7 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-7 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

@@ -28,7 +28,6 @@ import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authentic
 import { Route as AuthenticatedServicosRouteImport } from './routes/_authenticated/servicos'
 import { Route as AuthenticatedVeiculosRouteImport } from './routes/_authenticated/veiculos'
 import { Route as AgendarSlugRouteImport } from './routes/agendar/$slug'
-import { Route as AdminRouteImport } from './routes/admin'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -120,11 +119,6 @@ const AuthenticatedVeiculosRoute = AuthenticatedVeiculosRouteImport.update({
   path: '/veiculos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AgendarSlugRoute = AgendarSlugRouteImport.update({
   id: '/agendar/$slug',
   path: '/agendar/$slug',
@@ -139,7 +133,6 @@ export interface FileRoutesByFullPath {
   '/nova-senha': typeof NovaSenhaRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/admin': typeof AdminRoute
   '/agenda': typeof AuthenticatedAgendaRoute
   '/clientes': typeof AuthenticatedClientesRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
@@ -182,7 +175,6 @@ export interface FileRoutesById {
   '/nova-senha': typeof NovaSenhaRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/admin': typeof AdminRoute
   '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
   '/_authenticated/clientes': typeof AuthenticatedClientesRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
@@ -205,7 +197,6 @@ export interface FileRouteTypes {
     | '/nova-senha'
     | '/recuperar-senha'
     | '/reset-password'
-    | '/admin'
     | '/agenda'
     | '/clientes'
     | '/configuracoes'
@@ -247,7 +238,6 @@ export interface FileRouteTypes {
     | '/nova-senha'
     | '/recuperar-senha'
     | '/reset-password'
-    | '/admin'
     | '/_authenticated/agenda'
     | '/_authenticated/clientes'
     | '/_authenticated/configuracoes'
@@ -270,7 +260,6 @@ export interface RootRouteChildren {
   NovaSenhaRoute: typeof NovaSenhaRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  AdminRoute: typeof AdminRoute
   AgendarSlugRoute: typeof AgendarSlugRoute
 }
 
@@ -330,13 +319,6 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/agenda': {
@@ -457,7 +439,6 @@ const rootRouteChildren: RootRouteChildren = {
   NovaSenhaRoute: NovaSenhaRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  AdminRoute: AdminRoute,
   AgendarSlugRoute: AgendarSlugRoute,
 }
 export const routeTree = rootRouteImport
