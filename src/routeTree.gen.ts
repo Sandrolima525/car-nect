@@ -154,6 +154,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/login': typeof LoginRoute
   '/meus-agendamentos': typeof MeusAgendamentosRoute
@@ -240,6 +241,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/_authenticated'
     | '/auth'
     | '/login'
