@@ -83,16 +83,21 @@ function ClientsPage() {
     }
   };
 
-  const startEdit = (customer: Customer) => { setName(customer.name); setPhone(customer.phone ?? ""); setEmail(customer.email ?? ""); setNotes(customer.notes ?? ""); setEditing(true); setOpen(true); };\n\n  const saveCustomer = async () => {
+  const startEdit = (customer: Customer) => { setName(customer.name); setPhone(customer.phone ?? ""); setEmail(customer.email ?? ""); setNotes(customer.notes ?? ""); setEditing(true); setOpen(true); };
+
+  const saveCustomer = async () => {
     if (!name.trim() || phone.replace(/\D/g, "").length < 8) {
       setError("Informe nome e WhatsApp válido.");
       return;
     }
     try {
       setSaving(true); setError("");
-      const result = editing && selected\n        ? await supabase.from("customers").update({ name: name.trim(), phone: phone.trim(), email: email.trim() || null, notes: notes.trim() || null }).eq("id", selected.id).eq("company_id", companyId)\n        : await supabase.from("customers").insert({ company_id: companyId, name: name.trim(), phone: phone.trim(), email: email.trim() || null, notes: notes.trim() || null });
+      const result = editing && selected
+        ? await supabase.from("customers").update({ name: name.trim(), phone: phone.trim(), email: email.trim() || null, notes: notes.trim() || null }).eq("id", selected.id).eq("company_id", companyId)
+        : await supabase.from("customers").insert({ company_id: companyId, name: name.trim(), phone: phone.trim(), email: email.trim() || null, notes: notes.trim() || null });
       if (result.error) throw result.error;
-      setOpen(false); setEditing(false); setName(""); setPhone(""); setEmail(""); setNotes(""); await load();\n      if (selected) setSelected((current) => current ? { ...current, name: name.trim(), phone: phone.trim(), email: email.trim() || null, notes: notes.trim() || null } : current);
+      setOpen(false); setEditing(false); setName(""); setPhone(""); setEmail(""); setNotes(""); await load();
+      if (selected) setSelected((current) => current ? { ...current, name: name.trim(), phone: phone.trim(), email: email.trim() || null, notes: notes.trim() || null } : current);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível cadastrar o cliente.");
     } finally {
