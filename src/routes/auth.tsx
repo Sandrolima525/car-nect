@@ -36,8 +36,10 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard", replace: true });
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      const { data: isAdmin } = await supabase.rpc("is_platform_admin");
+      navigate({ to: isAdmin === true ? "/admin" : "/dashboard", replace: true });
     });
   }, [navigate]);
 
@@ -84,13 +86,16 @@ function AuthPage() {
       return;
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (signInError) {
       setError("E-mail ou senha inválidos.");
       return;
     }
-    navigate({ to: "/dashboard", replace: true });
+    const { data: isAdmin } = signInData.user
+      ? await supabase.rpc("is_platform_admin")
+      : { data: false };
+    navigate({ to: isAdmin === true ? "/admin" : "/dashboard", replace: true });
   }
 
   return (
