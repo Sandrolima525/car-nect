@@ -2,20 +2,24 @@ import { supabase } from "@/integrations/supabase/client";
 
 export async function getCurrentCompanyId() {
   const { data: sessionData } = await supabase.auth.getSession();
-  const userId = sessionData.session?.user.id;
+  if (!sessionData.session?.user) throw new Error("Usuário não autenticado.");
 
-  if (!userId) {
-    throw new Error("Usuário não autenticado.");
-  }
+  const { data, error } = await supabase.rpc("get_current_company_id");
+  if (error) throw new Error("Não foi possível identificar a empresa do usuário.");
+  if (!data) throw new Error("Empresa não encontrada para este usuário.");
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("company_id")
-    .eq("user_id", userId)
-    .maybeSingle();
+  return data as string;
+}
 
+export async function enterCompanyAsMaster(companyId: string) {
+  const { data, error } = await supabase.rpc("set_platform_admin_company_context", {
+    _company_id: companyId,
+  });
   if (error) throw error;
-  if (!data?.company_id) throw new Error("Empresa não encontrada para este usuário.");
+  return data as string;
+}
 
-  return data.company_id as string;
+export async function exitCompanyAsMaster() {
+  const { error } = await supabase.rpc("clear_platform_admin_company_context");
+  if (error) throw error;
 }
