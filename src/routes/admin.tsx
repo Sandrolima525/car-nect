@@ -3,11 +3,20 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 type Company = {
-  id: string; name: string; trade_name: string | null; city: string | null;
-  state: string | null; active: boolean; owner_email: string | null;
-  customers_count: number; appointments_count: number;
+  id: string; name: string; trade_name: string | null; document: string | null;
+  phone: string | null; email: string | null; city: string | null; state: string | null;
+  active: boolean; public_booking_slug: string | null; public_booking_enabled: boolean;
+  owner_email: string | null; customers_count: number; appointments_count: number;
+};
+
+type CompanyUser = {
+  profile_id: string; user_id: string; full_name: string | null; email: string | null;
+  role: string | null; active: boolean; created_at: string;
 };
 
 export const Route = createFileRoute("/admin")({
@@ -26,6 +35,14 @@ function MasterPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selected, setSelected] = useState<Company | null>(null);
+  const [users, setUsers] = useState<CompanyUser[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [form, setForm] = useState({
+    name: "", trade_name: "", document: "", phone: "", email: "", city: "", state: "",
+    public_booking_enabled: true,
+  });
 
   async function load() {
     setLoading(true); setError("");
@@ -37,11 +54,68 @@ function MasterPage() {
 
   useEffect(() => { void load(); }, []);
 
+  async function openCompany(company: Company) {
+    setSelected(company);
+    setForm({
+      name: company.name || "", trade_name: company.trade_name || "",
+      document: company.document || "", phone: company.phone || "",
+      email: company.email || "", city: company.city || "", state: company.state || "",
+      public_booking_enabled: company.public_booking_enabled ?? true,
+    });
+    setUsers([]);
+    setLoadingUsers(true);
+    const { data, error } = await supabase.rpc("admin_list_company_users", {
+      _company_id: company.id,
+    });
+    if (error) setError(error.message);
+    else setUsers((data ?? []) as CompanyUser[]);
+    setLoadingUsers(false);
+  }
+
+  async function saveCompany() {
+    if (!selected || !form.name.trim()) return;
+    setSaving(true); setError("");
+    const { error } = await supabase.rpc("admin_update_company", {
+      _company_id: selected.id,
+      _name: form.name.trim(),
+      _trade_name: form.trade_name.trim() || null,
+      _document: form.document.trim() || null,
+      _phone: form.phone.trim() || null,
+      _email: form.email.trim() || null,
+      _city: form.city.trim() || null,
+      _state: form.state.trim().toUpperCase() || null,
+      _public_booking_enabled: form.public_booking_enabled,
+    });
+    if (error) setError(error.message);
+    else {
+      await load();
+      const updated = companies.find(c => c.id === selected.id);
+      if (updated) setSelected({ ...updated, ...form });
+    }
+    setSaving(false);
+  }
+
   async function toggle(company: Company) {
+    setError("");
     const { error } = await supabase.rpc("admin_set_company_active", {
       _company_id: company.id, _active: !company.active,
     });
-    if (error) setError(error.message); else void load();
+    if (error) setError(error.message); else {
+      await load();
+      if (selected?.id === company.id) setSelected({ ...selected, active: !company.active });
+    }
+  }
+
+  async function unlinkUser(user: CompanyUser) {
+    if (!confirm("Remover o acesso deste usuário à empresa?")) return;
+    setError("");
+    const { error } = await supabase.rpc("admin_unlink_user", { _profile_id: user.profile_id });
+    if (error) setError(error.message);
+    else if (selected) {
+      const { data } = await supabase.rpc("admin_list_company_users", { _company_id: selected.id });
+      setUsers((data ?? []) as CompanyUser[]);
+      await load();
+    }
   }
 
   const filtered = companies.filter(c =>
@@ -76,22 +150,108 @@ function MasterPage() {
             filtered.length === 0 ? <p className="py-10 text-center text-muted-foreground">Nenhuma empresa encontrada.</p> :
             <div className="mt-5 space-y-3">
               {filtered.map(c => (
-                <div key={c.id} className="flex flex-col gap-4 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="font-semibold">{c.trade_name || c.name}</h2>
-                      <span className={`rounded-full px-2 py-0.5 text-xs ${c.active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>{c.active ? "Ativa" : "Bloqueada"}</span>
+                <button key={c.id} type="button" onClick={() => { void openCompany(c); }}
+                  className="w-full rounded-lg border p-4 text-left transition hover:bg-muted/50">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="font-semibold">{c.trade_name || c.name}</h2>
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${c.active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>{c.active ? "Ativa" : "Bloqueada"}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{c.owner_email || "Sem responsável"}{c.city ? ` · ${c.city}/${c.state || ""}` : ""}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{c.customers_count || 0} clientes · {c.appointments_count || 0} agendamentos</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">{c.owner_email || "Sem responsável"}{c.city ? ` · ${c.city}/${c.state || ""}` : ""}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{c.customers_count || 0} clientes · {c.appointments_count || 0} agendamentos</p>
+                    <span className="text-sm font-medium text-primary">Gerenciar →</span>
                   </div>
-                  <Button variant="outline" onClick={() => { void toggle(c); }}>{c.active ? "Bloquear" : "Ativar"}</Button>
-                </div>
+                </button>
               ))}
             </div>
           }
         </section>
       </div>
+
+      <Dialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null); }}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gerenciar empresa</DialogTitle>
+            <DialogDescription>Edite os dados, acesso e configurações da empresa.</DialogDescription>
+          </DialogHeader>
+
+          {selected && (
+            <div className="space-y-6">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input placeholder="Nome da empresa" value={form.name} onChange={e => setForm({...form, name:e.target.value})} />
+                <Input placeholder="Nome fantasia" value={form.trade_name} onChange={e => setForm({...form, trade_name:e.target.value})} />
+                <Input placeholder="CNPJ" value={form.document} onChange={e => setForm({...form, document:e.target.value})} />
+                <Input placeholder="Telefone" value={form.phone} onChange={e => setForm({...form, phone:e.target.value})} />
+                <Input placeholder="E-mail" value={form.email} onChange={e => setForm({...form, email:e.target.value})} />
+                <Input placeholder="Cidade" value={form.city} onChange={e => setForm({...form, city:e.target.value})} />
+                <Input placeholder="UF" maxLength={2} value={form.state} onChange={e => setForm({...form, state:e.target.value})} />
+              </div>
+
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-medium">Página pública de agendamento</p>
+                    <p className="text-xs text-muted-foreground">Permite que clientes façam agendamentos pela página pública.</p>
+                  </div>
+                  <Button type="button" variant={form.public_booking_enabled ? "default" : "outline"}
+                    onClick={() => setForm({...form, public_booking_enabled: !form.public_booking_enabled})}>
+                    {form.public_booking_enabled ? "Ativada" : "Desativada"}
+                  </Button>
+                </div>
+                {selected.public_booking_slug && (
+                  <p className="mt-3 break-all text-xs text-muted-foreground">Slug: /agendar/{selected.public_booking_slug}</p>
+                )}
+              </div>
+
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Status da empresa</p>
+                    <p className="text-xs text-muted-foreground">{selected.active ? "A empresa está ativa." : "A empresa está bloqueada."}</p>
+                  </div>
+                  <Button variant={selected.active ? "outline" : "default"} onClick={() => { void toggle(selected); }}>
+                    {selected.active ? "Bloquear empresa" : "Ativar empresa"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border p-4">
+                <p className="font-medium">Usuários com acesso</p>
+                {loadingUsers ? <p className="mt-3 text-sm text-muted-foreground">Carregando usuários...</p> :
+                  users.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Nenhum usuário vinculado.</p> :
+                  <div className="mt-3 space-y-2">
+                    {users.map(u => (
+                      <div key={u.profile_id} className="flex items-center justify-between gap-3 rounded-md bg-muted/40 p-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{u.full_name || u.email || "Usuário"}</p>
+                          <p className="truncate text-xs text-muted-foreground">{u.email || "Sem e-mail"} · {u.role || "sem função"}</p>
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => { void unlinkUser(u); }}>Remover</Button>
+                      </div>
+                    ))}
+                  </div>
+                }
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Clientes</p><p className="text-xl font-bold">{selected.customers_count || 0}</p></div>
+                <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Agendamentos</p><p className="text-xl font-bold">{selected.appointments_count || 0}</p></div>
+                <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Responsável</p><p className="truncate text-sm font-medium">{selected.owner_email || "—"}</p></div>
+                <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Status</p><p className="text-sm font-medium">{selected.active ? "Ativa" : "Bloqueada"}</p></div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelected(null)}>Fechar</Button>
+            <Button disabled={saving || !form.name.trim()} onClick={() => { void saveCompany(); }}>
+              {saving ? "Salvando..." : "Salvar alterações"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
