@@ -180,27 +180,29 @@ function DashboardPage() {
 function FinancialKpi({ realized, projected, realizedHelper, projectedHelper, visible, onToggle }: { realized: string; projected: string; realizedHelper: string; projectedHelper: string; visible: boolean; onToggle: () => void }) {
   const hidden = "••••••";
   return (
-    <Card className="rounded-2xl border-border/60 bg-gradient-to-br from-primary/[0.08] to-card shadow-sm sm:col-span-2 xl:col-span-1">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
+    <Card className="rounded-3xl border-border/60 bg-gradient-to-br from-primary/[0.10] via-card to-card shadow-sm">
+      <CardContent className="p-4 sm:p-5">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Faturamento</p>
-            <p className="mt-1 text-xs text-muted-foreground">Visão financeira do mês</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Faturamento</p>
+            <p className="mt-1 text-xs text-muted-foreground">Resumo financeiro do mês</p>
           </div>
-          <button type="button" onClick={onToggle} aria-label={visible ? "Ocultar valores" : "Mostrar valores"} className="rounded-xl p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
-            {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          <button type="button" onClick={onToggle} aria-label={visible ? "Ocultar valores" : "Mostrar valores"} className="flex h-10 w-10 items-center justify-center rounded-full border bg-background shadow-sm transition hover:bg-muted">
+            {visible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
           </button>
         </div>
-        <div className="mt-5 grid grid-cols-2 divide-x rounded-xl border bg-background/70">
-          <div className="min-w-0 p-3 sm:p-4">
-            <p className="text-[11px] font-medium text-muted-foreground">Realizado</p>
-            <p className="mt-1 truncate text-lg font-black tracking-tight sm:text-xl">{visible ? realized : hidden}</p>
-            <p className="mt-1 truncate text-[10px] text-muted-foreground">{realizedHelper}</p>
-          </div>
-          <div className="min-w-0 p-3 sm:p-4">
-            <p className="text-[11px] font-medium text-muted-foreground">Previsto</p>
-            <p className="mt-1 truncate text-lg font-black tracking-tight sm:text-xl">{visible ? projected : hidden}</p>
-            <p className="mt-1 truncate text-[10px] text-muted-foreground">{projectedHelper}</p>
+        <div className="mt-4 overflow-hidden rounded-2xl border bg-background shadow-sm">
+          <div className="grid grid-cols-2">
+            <div className="min-w-0 p-4 sm:p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Realizado</p>
+              <p className="mt-2 truncate text-xl font-black tracking-tight sm:text-2xl">{visible ? realized : hidden}</p>
+              <p className="mt-1 truncate text-[10px] text-muted-foreground">{realizedHelper}</p>
+            </div>
+            <div className="min-w-0 border-l p-4 sm:p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Previsto</p>
+              <p className="mt-2 truncate text-xl font-black tracking-tight sm:text-2xl">{visible ? projected : hidden}</p>
+              <p className="mt-1 truncate text-[10px] text-muted-foreground">{projectedHelper}</p>
+            </div>
           </div>
         </div>
       </CardContent>
