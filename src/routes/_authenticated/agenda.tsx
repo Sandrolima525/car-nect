@@ -40,7 +40,7 @@ const today = () => new Date().toLocaleDateString("en-CA");
 const statuses = [
   { value: "all", label: "Todos" },
   { value: "pending", label: "Aguardando" },
-  { value: "confirmed", label: "Em atendimento" },
+  { value: "confirmed", label: "Confirmado" },
   { value: "completed", label: "Pronto" },
   { value: "delivered", label: "Finalizado" },
 ];
@@ -207,6 +207,12 @@ function AgendaPage() {
   const changeStatus = async (item: Appointment) => {
     const next = item.status === "pending" ? "confirmed" : item.status === "confirmed" ? "completed" : item.status === "completed" ? "delivered" : null;
     if (!next) return;
+    const whatsappNumber = (item.customer_phone ?? "").replace(/\D/g, "");
+    const sendConfirmation = next === "confirmed" && whatsappNumber.length >= 8;
+    let whatsappWindow: Window | null = null;
+    if (sendConfirmation) {
+      whatsappWindow = window.open("about:blank", "_blank");
+    }
     const now = new Date().toISOString();
     const patch = {
       status: next,
@@ -216,7 +222,19 @@ function AgendaPage() {
       ...(next === "delivered" ? { completed_at: now } : {}),
     };
     const result = await supabase.from("appointments").update(patch).eq("id", item.id);
-    if (result.error) setError(result.error.message); else void load();
+    if (result.error) {
+      if (whatsappWindow) whatsappWindow.close();
+      setError(result.error.message);
+      return;
+    }
+    if (sendConfirmation && whatsappWindow) {
+      const message = encodeURIComponent(
+        `Olá, ${item.customer_name}! 🚗✨ Seu agendamento na ${companyName} foi confirmado para ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")} às ${item.appointment_time.slice(0, 5)}. Serviços: ${item.services.map((service) => service.name).join(", ") || "Atendimento"}.`
+      );
+      const target = "https://wa.me/" + (whatsappNumber.startsWith("55") ? whatsappNumber : "55" + whatsappNumber) + "?text=" + message;
+      whatsappWindow.location.href = target;
+    }
+    void load();
   };
 
   const cancel = async (item: Appointment) => {
@@ -252,7 +270,7 @@ function AgendaPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="icon" onClick={() => moveDate(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button variant="outline" onClick={() => setDate(today())}>Hoje</Button>
+          <Button variant="outline" onClick={() => setDate(today())}>Hoje</Button><Input className="h-10 w-[150px]" type="date" value={date} min={today()} onChange={(e) => e.target.value && setDate(e.target.value)} />
           <Button variant="outline" size="icon" onClick={() => moveDate(1)}><ChevronRight className="h-4 w-4" /></Button>
           <Button onClick={() => { setError(""); setOpen(true); }}><Plus className="mr-2 h-4 w-4" />Novo agendamento</Button>
         </div>
@@ -345,7 +363,7 @@ function AgendaPage() {
 function AppointmentCard({ item, onStatus, onCancel, onWhatsApp }: { item: Appointment; onStatus: (item: Appointment) => void; onCancel: (item: Appointment) => void; onWhatsApp: (item: Appointment) => void }) {
   const status = {
     pending: ["Aguardando", "bg-amber-500/10 text-amber-700"],
-    confirmed: ["Em atendimento", "bg-blue-500/10 text-blue-700"],
+    confirmed: ["Confirmado", "bg-blue-500/10 text-blue-700"],
     completed: ["Pronto", "bg-emerald-500/10 text-emerald-700"],
     delivered: ["Finalizado", "bg-muted text-muted-foreground"],
   }[item.status] ?? ["Cancelado", "bg-muted text-muted-foreground"];
@@ -363,7 +381,7 @@ function AppointmentCard({ item, onStatus, onCancel, onWhatsApp }: { item: Appoi
         <span className="flex items-center gap-1 text-sm font-bold"><Clock3 className="h-3.5 w-3.5 text-primary" />{item.appointment_time.slice(0, 5)} · {money(item.total_price)}</span>
         <div className="flex gap-1">
           {item.customer_phone && <Button size="icon" variant="ghost" onClick={() => onWhatsApp(item)} aria-label="WhatsApp"><MessageCircle className="h-4 w-4" /></Button>}
-          {item.status !== "delivered" && <Button size="sm" variant="outline" onClick={() => onStatus(item)}>{item.status === "pending" ? "Iniciar" : item.status === "confirmed" ? "Pronto" : "Finalizar"}</Button>}
+          {item.status !== "delivered" && <Button size="sm" variant="outline" onClick={() => onStatus(item)}>{item.status === "pending" ? "Confirmar" : item.status === "confirmed" ? "Pronto" : "Finalizar"}</Button>}
           {item.status === "pending" && <Button size="icon" variant="ghost" onClick={() => onCancel(item)} aria-label="Cancelar"><X className="h-4 w-4" /></Button>}
         </div>
       </div>
