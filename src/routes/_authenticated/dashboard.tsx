@@ -64,7 +64,6 @@ function DashboardPage() {
 
   useEffect(() => { void load(); }, [month]);
 
-  useEffect(() => { void supabase.rpc("is_platform_admin").then(({ data }) => setMasterMode(data === true)); }, []);
 
   const finished = items.filter((item) => item.status === "completed" || item.status === "delivered");
   const projected = items.reduce((sum, item) => sum + item.total_price, 0);
