@@ -31,6 +31,7 @@ function ClientsPage() {
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -82,16 +83,16 @@ function ClientsPage() {
     }
   };
 
-  const saveCustomer = async () => {
+  const startEdit = (customer: Customer) => { setName(customer.name); setPhone(customer.phone ?? ""); setEmail(customer.email ?? ""); setNotes(customer.notes ?? ""); setEditing(true); setOpen(true); };\n\n  const saveCustomer = async () => {
     if (!name.trim() || phone.replace(/\D/g, "").length < 8) {
       setError("Informe nome e WhatsApp válido.");
       return;
     }
     try {
       setSaving(true); setError("");
-      const result = await supabase.from("customers").insert({ company_id: companyId, name: name.trim(), phone: phone.trim(), email: email.trim() || null, notes: notes.trim() || null });
+      const result = editing && selected\n        ? await supabase.from("customers").update({ name: name.trim(), phone: phone.trim(), email: email.trim() || null, notes: notes.trim() || null }).eq("id", selected.id).eq("company_id", companyId)\n        : await supabase.from("customers").insert({ company_id: companyId, name: name.trim(), phone: phone.trim(), email: email.trim() || null, notes: notes.trim() || null });
       if (result.error) throw result.error;
-      setOpen(false); setName(""); setPhone(""); setEmail(""); setNotes(""); await load();
+      setOpen(false); setEditing(false); setName(""); setPhone(""); setEmail(""); setNotes(""); await load();\n      if (selected) setSelected((current) => current ? { ...current, name: name.trim(), phone: phone.trim(), email: email.trim() || null, notes: notes.trim() || null } : current);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível cadastrar o cliente.");
     } finally {
@@ -141,7 +142,7 @@ function ClientsPage() {
               <div className="space-y-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div><h2 className="text-xl font-bold">{selected.name}</h2><p className="text-sm text-muted-foreground">{selected.phone || "WhatsApp não informado"}{selected.email ? " · " + selected.email : ""}</p></div>
-                  <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => schedule(selected)}><CalendarPlus className="mr-2 h-4 w-4" />Agendar para este cliente</Button>{selected.phone && <Button size="sm" variant="outline" onClick={() => whatsapp(selected.phone)}><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</Button>}</div>
+                  <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => startEdit(selected)} variant="outline">Editar cliente</Button><Button size="sm" onClick={() => schedule(selected)}><CalendarPlus className="mr-2 h-4 w-4" />Agendar para este cliente</Button>{selected.phone && <Button size="sm" variant="outline" onClick={() => whatsapp(selected.phone)}><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</Button>}</div>
                 </div>
                 {detailLoading ? <p className="text-sm text-muted-foreground">Carregando histórico...</p> : <>
                   <div className="grid grid-cols-3 gap-2"><Stat label="Atendimentos" value={String(visits.filter((visit) => visit.status !== "cancelled").length)} /><Stat label="Total gasto" value={money(spent)} /><Stat label="Veículos" value={String(vehicles.length)} /></div>
@@ -158,7 +159,7 @@ function ClientsPage() {
           <div className="grid gap-4 sm:grid-cols-2"><div><Label>Nome *</Label><Input className="mt-2" value={name} onChange={(e) => setName(e.target.value)} /></div><div><Label>WhatsApp *</Label><Input className="mt-2" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(48) 99999-9999" /></div></div>
           <div><Label>E-mail</Label><Input className="mt-2" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
           <div><Label>Observações</Label><Textarea className="mt-2" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-          <Button className="w-full" onClick={() => void saveCustomer()} disabled={saving}>{saving ? "Salvando..." : "Cadastrar cliente"}</Button>
+          <Button className="w-full" onClick={() => void saveCustomer()} disabled={saving}>{saving ? "Salvando..." : editing ? "Salvar alterações" : "Cadastrar cliente"}</Button>
         </div></DialogContent>
       </Dialog>
     </div>
