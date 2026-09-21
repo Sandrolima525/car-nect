@@ -47,6 +47,7 @@ function MasterPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [selected, setSelected] = useState<Company | null>(null);
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [saving, setSaving] = useState(false);
@@ -69,6 +70,7 @@ function MasterPage() {
 
   async function openCompany(company: Company) {
     setError("");
+    setSuccess("");
     setSelected(company);
     setForm({
       name: company.name ?? "",
@@ -91,23 +93,26 @@ function MasterPage() {
   }
 
   async function saveCompany() {
-    if (!selected || !form.name.trim()) return;
+    if (!selected || !form.name.trim() || saving) return;
     setSaving(true);
     setError("");
-    const { error: rpcError } = await supabase.rpc("admin_update_company", {
-      _company_id: selected.id,
-      _name: form.name.trim(),
-      _trade_name: form.trade_name.trim() || null,
-      _document: form.document.trim() || null,
-      _phone: form.phone.trim() || null,
-      _email: form.email.trim() || null,
-      _city: form.city.trim() || null,
-      _state: form.state.trim().toUpperCase() || null,
-      _public_booking_enabled: form.public_booking_enabled,
-    });
-    if (rpcError) {
-      setError(rpcError.message);
-    } else {
+    setSuccess("");
+    try {
+      const { error: rpcError } = await supabase.rpc("admin_update_company", {
+        _company_id: selected.id,
+        _name: form.name.trim(),
+        _trade_name: form.trade_name.trim() || null,
+        _document: form.document.trim() || null,
+        _phone: form.phone.trim() || null,
+        _email: form.email.trim() || null,
+        _city: form.city.trim() || null,
+        _state: form.state.trim().toUpperCase() || null,
+        _public_booking_enabled: form.public_booking_enabled,
+      });
+      if (rpcError) {
+        setError(`Não foi possível salvar: ${rpcError.message}`);
+        return;
+      }
       const updated: Company = {
         ...selected,
         name: form.name.trim(),
@@ -121,8 +126,12 @@ function MasterPage() {
       };
       setSelected(updated);
       setCompanies(prev => prev.map(c => c.id === updated.id ? updated : c));
+      setSuccess("Alterações salvas com sucesso.");
+    } catch (e) {
+      setError(`Não foi possível salvar: ${e instanceof Error ? e.message : "Erro desconhecido."}`);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   async function toggle(company: Company) {
@@ -187,6 +196,7 @@ function MasterPage() {
         <section className="rounded-xl border bg-card p-5">
           <Input placeholder="Buscar empresa, responsável ou cidade..." value={search} onChange={e => setSearch(e.target.value)} />
           {error && <p className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+          {success && <p className="mt-4 rounded-md bg-green-100 p-3 text-sm text-green-700">{success}</p>}
           {loading ? <p className="py-10 text-center text-muted-foreground">Carregando empresas...</p> :
             filtered.length === 0 ? <p className="py-10 text-center text-muted-foreground">Nenhuma empresa encontrada.</p> :
             <div className="mt-5 space-y-3">
