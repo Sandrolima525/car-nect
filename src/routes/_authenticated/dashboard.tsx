@@ -95,7 +95,8 @@ function DashboardPage() {
   }, [items]);
 
   const moveMonth = (offset: number) => {
-    const [year, monthNumber] = month.split("-").map(Number);
+    const year = Number(month.slice(0, 4));
+    const monthNumber = Number(month.slice(5, 7));
     const next = new Date(year, monthNumber - 1 + offset, 1);
     setMonth(iso(next).slice(0, 7));
   };

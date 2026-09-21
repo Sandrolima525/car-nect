@@ -208,10 +208,13 @@ function AgendaPage() {
     const next = item.status === "pending" ? "confirmed" : item.status === "confirmed" ? "completed" : item.status === "completed" ? "delivered" : null;
     if (!next) return;
     const now = new Date().toISOString();
-    const patch: Record<string, string> = { status: next, updated_at: now };
-    if (next === "confirmed") patch.washing_at = now;
-    if (next === "completed") patch.ready_at = now;
-    if (next === "delivered") patch.completed_at = now;
+    const patch = {
+      status: next,
+      updated_at: now,
+      ...(next === "confirmed" ? { washing_at: now } : {}),
+      ...(next === "completed" ? { ready_at: now } : {}),
+      ...(next === "delivered" ? { completed_at: now } : {}),
+    };
     const result = await supabase.from("appointments").update(patch).eq("id", item.id);
     if (result.error) setError(result.error.message); else void load();
   };
