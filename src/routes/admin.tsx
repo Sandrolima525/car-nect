@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { enterCompanyAsMaster } from "@/services/company";
 
 type Company = {
   id: string;
@@ -90,6 +91,17 @@ function MasterPage() {
     if (rpcError) setError(rpcError.message);
     else setUsers((data ?? []) as CompanyUser[]);
     setLoadingUsers(false);
+  }
+
+  async function enterCompany(company: Company) {
+    setError("");
+    setSuccess("");
+    try {
+      await enterCompanyAsMaster(company.id);
+      location.href = "/dashboard";
+    } catch (e) {
+      setError(`Não foi possível entrar na empresa: ${e instanceof Error ? e.message : "Erro desconhecido."}`);
+    }
   }
 
   async function saveCompany() {
@@ -212,7 +224,7 @@ function MasterPage() {
                       <p className="text-sm text-muted-foreground">{c.owner_email || "Sem responsável"}{c.city ? ` · ${c.city}/${c.state || ""}` : ""}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{c.customers_count || 0} clientes · {c.appointments_count || 0} agendamentos</p>
                     </div>
-                    <span className="text-sm font-medium text-primary">Gerenciar →</span>
+                    <div className="flex flex-wrap items-center gap-2"><span className="rounded-lg border px-3 py-1.5 text-sm font-medium text-primary">Gerenciar →</span><span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); void enterCompany(c); }} onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); void enterCompany(c); } }} className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground">Entrar na empresa</span></div>
                   </div>
                 </button>
               ))}
@@ -294,6 +306,8 @@ function MasterPage() {
                 <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Responsável</p><p className="truncate text-sm font-medium">{selected.owner_email || "—"}</p></div>
                 <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Status</p><p className="text-sm font-medium">{selected.active ? "Ativa" : "Bloqueada"}</p></div>
               </div>
+
+              <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-4"><p className="font-medium">Acesso administrativo</p><p className="mt-1 text-xs text-muted-foreground">Entra no sistema usando o contexto desta empresa, sem precisar da senha do proprietário.</p><Button className="mt-3" onClick={() => { void enterCompany(selected); }}>Entrar como proprietário</Button></div>
 
               <div className="mt-6 flex justify-end gap-2 border-t pt-5">
                 <Button variant="outline" onClick={() => setSelected(null)}>Cancelar</Button>
