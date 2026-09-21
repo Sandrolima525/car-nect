@@ -151,7 +151,7 @@ function ServicesPage() {
         </div>}
 
       <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) reset(); }}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto overscroll-contain sm:max-w-xl" onOpenAutoFocus={(event) => event.preventDefault()}>
           <DialogHeader><DialogTitle>{editing ? "Editar serviço" : "Novo serviço"}</DialogTitle></DialogHeader>
           <div className="space-y-5">
             <div><Label>Nome *</Label><Input className="mt-2" value={name} onChange={(e) => setName(e.target.value)} placeholder="Lavagem completa" /></div>
