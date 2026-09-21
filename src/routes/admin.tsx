@@ -3,20 +3,32 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
 
 type Company = {
-  id: string; name: string; trade_name: string | null; document: string | null;
-  phone: string | null; email: string | null; city: string | null; state: string | null;
-  active: boolean; public_booking_slug: string | null; public_booking_enabled: boolean;
-  owner_email: string | null; customers_count: number; appointments_count: number;
+  id: string;
+  name: string;
+  trade_name: string | null;
+  document: string | null;
+  phone: string | null;
+  email: string | null;
+  city: string | null;
+  state: string | null;
+  active: boolean;
+  public_booking_slug: string | null;
+  public_booking_enabled: boolean;
+  owner_email: string | null;
+  customers_count: number;
+  appointments_count: number;
 };
 
 type CompanyUser = {
-  profile_id: string; user_id: string; full_name: string | null; email: string | null;
-  role: string | null; active: boolean; created_at: string;
+  profile_id: string;
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string | null;
+  active: boolean;
+  created_at: string;
 };
 
 export const Route = createFileRoute("/admin")({
@@ -45,9 +57,10 @@ function MasterPage() {
   });
 
   async function load() {
-    setLoading(true); setError("");
-    const { data, error } = await supabase.rpc("admin_list_companies");
-    if (error) setError(error.message);
+    setLoading(true);
+    setError("");
+    const { data, error: rpcError } = await supabase.rpc("admin_list_companies");
+    if (rpcError) setError(rpcError.message);
     else setCompanies((data ?? []) as Company[]);
     setLoading(false);
   }
@@ -55,27 +68,33 @@ function MasterPage() {
   useEffect(() => { void load(); }, []);
 
   async function openCompany(company: Company) {
+    setError("");
     setSelected(company);
     setForm({
-      name: company.name || "", trade_name: company.trade_name || "",
-      document: company.document || "", phone: company.phone || "",
-      email: company.email || "", city: company.city || "", state: company.state || "",
+      name: company.name ?? "",
+      trade_name: company.trade_name ?? "",
+      document: company.document ?? "",
+      phone: company.phone ?? "",
+      email: company.email ?? "",
+      city: company.city ?? "",
+      state: company.state ?? "",
       public_booking_enabled: company.public_booking_enabled ?? true,
     });
     setUsers([]);
     setLoadingUsers(true);
-    const { data, error } = await supabase.rpc("admin_list_company_users", {
+    const { data, error: rpcError } = await supabase.rpc("admin_list_company_users", {
       _company_id: company.id,
     });
-    if (error) setError(error.message);
+    if (rpcError) setError(rpcError.message);
     else setUsers((data ?? []) as CompanyUser[]);
     setLoadingUsers(false);
   }
 
   async function saveCompany() {
     if (!selected || !form.name.trim()) return;
-    setSaving(true); setError("");
-    const { error } = await supabase.rpc("admin_update_company", {
+    setSaving(true);
+    setError("");
+    const { error: rpcError } = await supabase.rpc("admin_update_company", {
       _company_id: selected.id,
       _name: form.name.trim(),
       _trade_name: form.trade_name.trim() || null,
@@ -86,36 +105,58 @@ function MasterPage() {
       _state: form.state.trim().toUpperCase() || null,
       _public_booking_enabled: form.public_booking_enabled,
     });
-    if (error) setError(error.message);
-    else {
-      await load();
-      const updated = companies.find(c => c.id === selected.id);
-      if (updated) setSelected({ ...updated, ...form });
+    if (rpcError) {
+      setError(rpcError.message);
+    } else {
+      const updated: Company = {
+        ...selected,
+        name: form.name.trim(),
+        trade_name: form.trade_name.trim() || null,
+        document: form.document.trim() || null,
+        phone: form.phone.trim() || null,
+        email: form.email.trim() || null,
+        city: form.city.trim() || null,
+        state: form.state.trim().toUpperCase() || null,
+        public_booking_enabled: form.public_booking_enabled,
+      };
+      setSelected(updated);
+      setCompanies(prev => prev.map(c => c.id === updated.id ? updated : c));
     }
     setSaving(false);
   }
 
   async function toggle(company: Company) {
     setError("");
-    const { error } = await supabase.rpc("admin_set_company_active", {
-      _company_id: company.id, _active: !company.active,
+    const { error: rpcError } = await supabase.rpc("admin_set_company_active", {
+      _company_id: company.id,
+      _active: !company.active,
     });
-    if (error) setError(error.message); else {
-      await load();
-      if (selected?.id === company.id) setSelected({ ...selected, active: !company.active });
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
     }
+    const active = !company.active;
+    setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, active } : c));
+    if (selected?.id === company.id) setSelected(prev => prev ? { ...prev, active } : prev);
   }
 
   async function unlinkUser(user: CompanyUser) {
     if (!confirm("Remover o acesso deste usuário à empresa?")) return;
     setError("");
-    const { error } = await supabase.rpc("admin_unlink_user", { _profile_id: user.profile_id });
-    if (error) setError(error.message);
-    else if (selected) {
-      const { data } = await supabase.rpc("admin_list_company_users", { _company_id: selected.id });
-      setUsers((data ?? []) as CompanyUser[]);
-      await load();
+    const { error: rpcError } = await supabase.rpc("admin_unlink_user", {
+      _profile_id: user.profile_id,
+    });
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
     }
+    if (selected) {
+      const { data } = await supabase.rpc("admin_list_company_users", {
+        _company_id: selected.id,
+      });
+      setUsers((data ?? []) as CompanyUser[]);
+    }
+    await load();
   }
 
   const filtered = companies.filter(c =>
@@ -140,12 +181,12 @@ function MasterPage() {
         <section className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border bg-card p-5"><p className="text-sm text-muted-foreground">Empresas</p><p className="mt-1 text-3xl font-bold">{companies.length}</p></div>
           <div className="rounded-xl border bg-card p-5"><p className="text-sm text-muted-foreground">Ativas</p><p className="mt-1 text-3xl font-bold">{companies.filter(c => c.active).length}</p></div>
-          <div className="rounded-xl border bg-card p-5"><p className="text-sm text-muted-foreground">Agendamentos</p><p className="mt-1 text-3xl font-bold">{companies.reduce((n,c) => n + Number(c.appointments_count || 0), 0)}</p></div>
+          <div className="rounded-xl border bg-card p-5"><p className="text-sm text-muted-foreground">Agendamentos</p><p className="mt-1 text-3xl font-bold">{companies.reduce((n, c) => n + Number(c.appointments_count || 0), 0)}</p></div>
         </section>
 
         <section className="rounded-xl border bg-card p-5">
           <Input placeholder="Buscar empresa, responsável ou cidade..." value={search} onChange={e => setSearch(e.target.value)} />
-          {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+          {error && <p className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
           {loading ? <p className="py-10 text-center text-muted-foreground">Carregando empresas...</p> :
             filtered.length === 0 ? <p className="py-10 text-center text-muted-foreground">Nenhuma empresa encontrada.</p> :
             <div className="mt-5 space-y-3">
@@ -168,18 +209,20 @@ function MasterPage() {
             </div>
           }
         </section>
-      </div>
 
-      <Dialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null); }}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Gerenciar empresa</DialogTitle>
-            <DialogDescription>Edite os dados, acesso e configurações da empresa.</DialogDescription>
-          </DialogHeader>
+        {selected && (
+          <section className="fixed inset-0 z-50 overflow-y-auto bg-background/95 p-4 backdrop-blur-sm md:p-8">
+            <div className="mx-auto max-w-3xl rounded-xl border bg-card p-5 shadow-xl md:p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">Empresa</p>
+                  <h2 className="text-2xl font-bold">{selected.trade_name || selected.name}</h2>
+                  <p className="text-sm text-muted-foreground">Gerenciamento da empresa</p>
+                </div>
+                <Button variant="outline" onClick={() => setSelected(null)}>Fechar</Button>
+              </div>
 
-          {selected && (
-            <div className="space-y-6">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <Input placeholder="Nome da empresa" value={form.name} onChange={e => setForm({...form, name:e.target.value})} />
                 <Input placeholder="Nome fantasia" value={form.trade_name} onChange={e => setForm({...form, trade_name:e.target.value})} />
                 <Input placeholder="CNPJ" value={form.document} onChange={e => setForm({...form, document:e.target.value})} />
@@ -189,11 +232,11 @@ function MasterPage() {
                 <Input placeholder="UF" maxLength={2} value={form.state} onChange={e => setForm({...form, state:e.target.value})} />
               </div>
 
-              <div className="rounded-lg border p-4">
+              <div className="mt-6 rounded-lg border p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="font-medium">Página pública de agendamento</p>
-                    <p className="text-xs text-muted-foreground">Permite que clientes façam agendamentos pela página pública.</p>
+                    <p className="text-xs text-muted-foreground">Permite agendamentos pela página pública.</p>
                   </div>
                   <Button type="button" variant={form.public_booking_enabled ? "default" : "outline"}
                     onClick={() => setForm({...form, public_booking_enabled: !form.public_booking_enabled})}>
@@ -205,11 +248,11 @@ function MasterPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border p-4">
-                <div className="flex items-center justify-between">
+              <div className="mt-4 rounded-lg border p-4">
+                <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="font-medium">Status da empresa</p>
-                    <p className="text-xs text-muted-foreground">{selected.active ? "A empresa está ativa." : "A empresa está bloqueada."}</p>
+                    <p className="text-xs text-muted-foreground">{selected.active ? "Empresa ativa." : "Empresa bloqueada."}</p>
                   </div>
                   <Button variant={selected.active ? "outline" : "default"} onClick={() => { void toggle(selected); }}>
                     {selected.active ? "Bloquear empresa" : "Ativar empresa"}
@@ -217,7 +260,7 @@ function MasterPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border p-4">
+              <div className="mt-4 rounded-lg border p-4">
                 <p className="font-medium">Usuários com acesso</p>
                 {loadingUsers ? <p className="mt-3 text-sm text-muted-foreground">Carregando usuários...</p> :
                   users.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Nenhum usuário vinculado.</p> :
@@ -235,23 +278,23 @@ function MasterPage() {
                 }
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Clientes</p><p className="text-xl font-bold">{selected.customers_count || 0}</p></div>
                 <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Agendamentos</p><p className="text-xl font-bold">{selected.appointments_count || 0}</p></div>
                 <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Responsável</p><p className="truncate text-sm font-medium">{selected.owner_email || "—"}</p></div>
                 <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Status</p><p className="text-sm font-medium">{selected.active ? "Ativa" : "Bloqueada"}</p></div>
               </div>
-            </div>
-          )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelected(null)}>Fechar</Button>
-            <Button disabled={saving || !form.name.trim()} onClick={() => { void saveCompany(); }}>
-              {saving ? "Salvando..." : "Salvar alterações"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <div className="mt-6 flex justify-end gap-2 border-t pt-5">
+                <Button variant="outline" onClick={() => setSelected(null)}>Cancelar</Button>
+                <Button disabled={saving || !form.name.trim()} onClick={() => { void saveCompany(); }}>
+                  {saving ? "Salvando..." : "Salvar alterações"}
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
     </main>
   );
 }
