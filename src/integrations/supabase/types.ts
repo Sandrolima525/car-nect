@@ -414,6 +414,27 @@ export type Database = {
           },
         ]
       }
+      platform_admins: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active: boolean
@@ -714,6 +735,79 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_create_company: {
+        Args: {
+          _city?: string
+          _document?: string
+          _email?: string
+          _name: string
+          _owner_email?: string
+          _phone?: string
+          _state?: string
+          _trade_name?: string
+        }
+        Returns: string
+      }
+      admin_link_user_to_company: {
+        Args: {
+          _company_id: string
+          _email: string
+          _role?: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: undefined
+      }
+      admin_list_companies: {
+        Args: never
+        Returns: {
+          active: boolean
+          appointments_count: number
+          city: string
+          created_at: string
+          customers_count: number
+          document: string
+          email: string
+          id: string
+          name: string
+          owner_email: string
+          phone: string
+          public_booking_enabled: boolean
+          public_booking_slug: string
+          state: string
+          trade_name: string
+          users_count: number
+        }[]
+      }
+      admin_list_company_users: {
+        Args: { _company_id: string }
+        Returns: {
+          active: boolean
+          created_at: string
+          email: string
+          full_name: string
+          profile_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
+      }
+      admin_set_company_active: {
+        Args: { _active: boolean; _company_id: string }
+        Returns: undefined
+      }
+      admin_unlink_user: { Args: { _profile_id: string }; Returns: undefined }
+      admin_update_company: {
+        Args: {
+          _city?: string
+          _company_id: string
+          _document?: string
+          _email?: string
+          _name: string
+          _phone?: string
+          _public_booking_enabled?: boolean
+          _state?: string
+          _trade_name?: string
+        }
+        Returns: undefined
+      }
       create_company_for_current_user: {
         Args: {
           _city?: string
@@ -769,6 +863,7 @@ export type Database = {
         Returns: boolean
       }
       is_company_admin: { Args: never; Returns: boolean }
+      is_platform_admin: { Args: never; Returns: boolean }
       manage_company_profile: {
         Args: {
           _active: boolean
@@ -777,6 +872,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      user_company_id: { Args: never; Returns: string }
     }
     Enums: {
       app_role: "owner" | "admin" | "manager" | "employee"
