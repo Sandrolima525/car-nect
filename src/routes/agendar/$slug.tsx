@@ -29,7 +29,7 @@ function PublicBookingPage() {
   const [plate, setPlate] = useState("");
   const [vehicleBrand, setVehicleBrand] = useState("");
   const [model, setModel] = useState("");
-  const [date, setDate] = useState(new Date(Date.now() + 86400000).toLocaleDateString("en-CA"));
+  const [date, setDate] = useState(new Date().toLocaleDateString("en-CA"));
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
@@ -38,6 +38,7 @@ function PublicBookingPage() {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
+  const [bookingReference, setBookingReference] = useState("");
 
   const compatibleServices = useMemo(() => services.filter(s => !vehicleCategory || !s.vehicle_category || s.vehicle_category === "all" || s.vehicle_category === vehicleCategory), [services, vehicleCategory]);
   const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
@@ -83,6 +84,7 @@ function PublicBookingPage() {
         _vehicle_plate: plate.trim() || null, _vehicle_brand: vehicleBrand.trim() || null, _vehicle_model: model.trim() || null, _notes: notes.trim() || null,
       });
       if (result.error) throw result.error;
+      setBookingReference(typeof result.data === "string" ? result.data : result.data?.id ?? "");
       setDone(true);
     } catch (err) { setError(err instanceof Error ? (err.message.includes("no longer available") ? "Esse horário acabou de ser ocupado. Escolha outro horário." : err.message) : "Não foi possível concluir o agendamento."); }
     finally { setSaving(false); }
@@ -99,7 +101,8 @@ function PublicBookingPage() {
   return <main style={brandCssVariables(themeBrand)} className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-primary/[0.06] px-4 py-8 sm:py-12">
     <div className="mx-auto max-w-2xl">
       <div className="mb-8 rounded-3xl border border-border/60 bg-card/70 p-5 text-center shadow-lg backdrop-blur sm:p-7">{company.logo_url ? <img src={company.logo_url} alt={"Logo " + (company.trade_name ?? company.name)} className="mx-auto mb-3 h-20 w-20 rounded-full border-2 border-primary/20 bg-background object-cover p-1 shadow-lg ring-4 ring-primary/10" /> : <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-bold">{company.name.slice(0, 2).toUpperCase()}</div>}<h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{company.name}</h1><p className="mt-1 text-sm text-muted-foreground">Escolha o serviço e veja somente os horários realmente disponíveis.</p><div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground"></div>{whatsappNumber && <Button variant="outline" size="sm" className="mt-4" asChild><a href={"https://wa.me/"+whatsappNumber} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4"/>Falar pelo WhatsApp</a></Button>}</div>
-      {done ? <Card className="overflow-hidden border-border/60 shadow-2xl shadow-primary/[0.06] backdrop-blur"><CardContent className="p-8 text-center sm:p-10"><CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-600" /><h2 className="text-xl font-bold">Agendamento solicitado!</h2><p className="mt-2 text-sm text-muted-foreground">O horário foi reservado e já entrou na agenda da empresa.</p><Button className="mt-6 w-full" asChild disabled={!whatsappNumber}><a href={(whatsappNumber ? "https://wa.me/" + whatsappNumber + "?text=" : "https://wa.me/?text=") + whatsappMessage} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />{whatsappNumber ? "Enviar confirmação no WhatsApp" : "WhatsApp não configurado"}</a></Button></CardContent></Card> :
+      {done ? <Card className="overflow-hidden border-border/60 shadow-2xl shadow-primary/[0.06] backdrop-blur"><CardContent className="p-8 text-center sm:p-10"><CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-600" /><h2 className="text-xl font-bold">Agendamento solicitado!</h2><p className="mt-2 text-sm text-muted-foreground">Seu pedido foi registrado e o horário ficou reservado na agenda da empresa.</p>{bookingReference && <p className="mt-2 text-xs text-muted-foreground">Protocolo: <strong>{bookingReference}</strong></p>}
+<p className="mt-4 rounded-xl bg-primary/5 p-3 text-xs text-muted-foreground">Se precisar alterar ou confirmar algum detalhe, fale diretamente com a empresa pelo WhatsApp.</p><Button className="mt-6 w-full" asChild disabled={!whatsappNumber}><a href={(whatsappNumber ? "https://wa.me/" + whatsappNumber + "?text=" : "https://wa.me/?text=") + whatsappMessage} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />{whatsappNumber ? "Enviar confirmação no WhatsApp" : "WhatsApp não configurado"}</a></Button></CardContent></Card> :
       <Card className="overflow-hidden border-border/60 shadow-xl shadow-black/[0.06]"><CardHeader className="border-b border-primary/10 bg-gradient-to-r from-primary/[0.08] via-muted/20 to-background p-6"><h2 className="text-lg font-semibold">Agendar atendimento</h2><p className="text-sm text-muted-foreground">Preencha seus dados e escolha os serviços.</p></CardHeader><CardContent className="space-y-5">
         {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
         <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" /></div><div className="space-y-2"><Label>WhatsApp *</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(48) 99999-9999" /></div></div>
