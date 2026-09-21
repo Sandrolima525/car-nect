@@ -86,15 +86,21 @@ function AuthPage() {
       return;
     }
 
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (signInError) {
-      setError("E-mail ou senha inválidos.");
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+
+    // Some browser/storage configurations can report an auth error even after
+    // Supabase has established the session. Trust the session when it exists.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = signInData.user ?? sessionData.session?.user ?? null;
+
+    if (!user) {
+      setLoading(false);
+      setError(signInError?.message || "Não foi possível entrar. Verifique o e-mail e a senha.");
       return;
     }
-    const { data: isAdmin } = signInData.user
-      ? await supabase.rpc("is_platform_admin")
-      : { data: false };
+
+    const { data: isAdmin } = await supabase.rpc("is_platform_admin");
+    setLoading(false);
     navigate({ to: isAdmin === true ? "/admin" : "/dashboard", replace: true });
   }
 
