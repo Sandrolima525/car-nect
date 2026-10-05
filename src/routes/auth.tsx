@@ -89,7 +89,7 @@ function AuthPage() {
     const loginIdentifier = email.trim();
     const loginEmail = loginIdentifier.includes("@")
       ? loginIdentifier
-      : `${loginIdentifier.toLowerCase()}@accounts.carnnect.app`;
+      : `${loginIdentifier.toLowerCase()}@accounts.carnect.app`;
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
 
     // Some browser/storage configurations can report an auth error even after
