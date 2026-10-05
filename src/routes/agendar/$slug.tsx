@@ -15,7 +15,7 @@ export const Route = createFileRoute("/agendar/$slug")({
   component: PublicBookingPage,
 });
 
-type Company = { id: string; name: string; trade_name: string | null; phone: string | null; whatsapp_number: string | null; logo_url: string | null; brand_colors: BrandColors | null };
+type Company = { id: string; name: string; trade_name: string | null; phone: string | null; whatsapp_number: string | null; address: string | null; zip_code: string | null; city: string | null; state: string | null; logo_url: string | null; brand_colors: BrandColors | null };
 type Service = { id: string; name: string; price: number; estimated_duration: number | null; vehicle_category: string | null; category: string | null };
 
 function PublicBookingPage() {
@@ -53,7 +53,7 @@ function PublicBookingPage() {
     void (async () => {
       try {
         setLoading(true);
-        const c = await supabase.from("companies").select("id,name,trade_name,phone,whatsapp_number,logo_url,brand_colors").eq("public_booking_slug", slug).eq("public_booking_enabled", true).maybeSingle();
+        const c = await supabase.from("companies").select("id,name,trade_name,phone,whatsapp_number,address,zip_code,city,state,logo_url,brand_colors").eq("public_booking_slug", slug).eq("public_booking_enabled", true).maybeSingle();
         if (c.error) throw c.error;
         if (!c.data) throw new Error("Página de agendamento não encontrada.");
         const s = await supabase.from("services").select("id,name,price,estimated_duration,vehicle_category,category").eq("company_id", c.data.id).eq("active", true).order("name");
