@@ -57,7 +57,7 @@ function MasterPage() {
   const [createLogo, setCreateLogo] = useState<File | null>(null);
   const [createForm, setCreateForm] = useState({
     name: "", trade_name: "", document: "", email: "", phone: "", whatsapp_number: "",
-    city: "", state: "", address: "", zip_code: "", owner_name: "", username: "", password: "",
+    city: "", state: "", address: "", address_number: "", zip_code: "", owner_name: "", username: "", password: "",
   });
   const [selected, setSelected] = useState<Company | null>(null);
   const [users, setUsers] = useState<CompanyUser[]>([]);
@@ -304,7 +304,8 @@ function MasterPage() {
                     <div className="space-y-1.5"><Label>Telefone</Label><Input value={createForm.phone} onChange={e => setCreateForm({...createForm, phone:e.target.value})} /></div>
                     <div className="space-y-1.5"><Label>WhatsApp</Label><Input placeholder="(48) 99999-9999" value={createForm.whatsapp_number} onChange={e => setCreateForm({...createForm, whatsapp_number:e.target.value})} /></div>
                     <div className="space-y-1.5"><Label>CEP</Label><Input placeholder="00000-000" value={createForm.zip_code} onChange={e => setCreateForm({...createForm, zip_code:e.target.value})} /></div>
-                    <div className="space-y-1.5"><Label>Rua e número</Label><Input placeholder="Ex.: Rua das Flores, 123" value={createForm.address} onChange={e => setCreateForm({...createForm, address:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>Rua</Label><Input placeholder="Nome da rua" value={createForm.address} onChange={e => setCreateForm({...createForm, address:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>Número</Label><Input placeholder="123" value={createForm.address_number} onChange={e => setCreateForm({...createForm, address_number:e.target.value})} /></div>
                     <div className="space-y-1.5"><Label>Cidade</Label><Input value={createForm.city} onChange={e => setCreateForm({...createForm, city:e.target.value})} /></div>
                     <div className="space-y-1.5"><Label>UF</Label><Input maxLength={2} value={createForm.state} onChange={e => setCreateForm({...createForm, state:e.target.value.toUpperCase()})} /></div>
                   </div>
