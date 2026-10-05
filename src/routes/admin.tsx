@@ -15,6 +15,8 @@ type Company = {
   email: string | null;
   city: string | null;
   state: string | null;
+  address: string | null;
+  zip_code: string | null;
   active: boolean;
   public_booking_slug: string | null;
   public_booking_enabled: boolean;
@@ -55,7 +57,7 @@ function MasterPage() {
   const [createLogo, setCreateLogo] = useState<File | null>(null);
   const [createForm, setCreateForm] = useState({
     name: "", trade_name: "", document: "", email: "", phone: "", whatsapp_number: "",
-    city: "", state: "", owner_name: "", username: "", password: "",
+    city: "", state: "", address: "", zip_code: "", owner_name: "", username: "", password: "",
   });
   const [selected, setSelected] = useState<Company | null>(null);
   const [users, setUsers] = useState<CompanyUser[]>([]);
@@ -117,6 +119,8 @@ function MasterPage() {
       email: company.email ?? "",
       city: company.city ?? "",
       state: company.state ?? "",
+      address: company.address ?? "",
+      zip_code: company.zip_code ?? "",
       public_booking_enabled: company.public_booking_enabled ?? true,
     });
     setUsers([]);
@@ -155,6 +159,8 @@ function MasterPage() {
         _email: form.email.trim() || null,
         _city: form.city.trim() || null,
         _state: form.state.trim().toUpperCase() || null,
+        _address: form.address.trim() || null,
+        _zip_code: form.zip_code.trim() || null,
         _public_booking_enabled: form.public_booking_enabled,
       });
       if (rpcError) {
@@ -170,6 +176,8 @@ function MasterPage() {
         email: form.email.trim() || null,
         city: form.city.trim() || null,
         state: form.state.trim().toUpperCase() || null,
+        address: form.address.trim() || null,
+        zip_code: form.zip_code.trim() || null,
         public_booking_enabled: form.public_booking_enabled,
       };
       setSelected(updated);
@@ -295,6 +303,8 @@ function MasterPage() {
                     <div className="space-y-1.5"><Label>E-mail da empresa</Label><Input type="email" value={createForm.email} onChange={e => setCreateForm({...createForm, email:e.target.value})} /></div>
                     <div className="space-y-1.5"><Label>Telefone</Label><Input value={createForm.phone} onChange={e => setCreateForm({...createForm, phone:e.target.value})} /></div>
                     <div className="space-y-1.5"><Label>WhatsApp</Label><Input placeholder="(48) 99999-9999" value={createForm.whatsapp_number} onChange={e => setCreateForm({...createForm, whatsapp_number:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>CEP</Label><Input placeholder="00000-000" value={createForm.zip_code} onChange={e => setCreateForm({...createForm, zip_code:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>Rua e número</Label><Input placeholder="Ex.: Rua das Flores, 123" value={createForm.address} onChange={e => setCreateForm({...createForm, address:e.target.value})} /></div>
                     <div className="space-y-1.5"><Label>Cidade</Label><Input value={createForm.city} onChange={e => setCreateForm({...createForm, city:e.target.value})} /></div>
                     <div className="space-y-1.5"><Label>UF</Label><Input maxLength={2} value={createForm.state} onChange={e => setCreateForm({...createForm, state:e.target.value.toUpperCase()})} /></div>
                   </div>
@@ -348,6 +358,8 @@ function MasterPage() {
                 <Input placeholder="CNPJ" value={form.document} onChange={e => setForm({...form, document:e.target.value})} />
                 <Input placeholder="Telefone" value={form.phone} onChange={e => setForm({...form, phone:e.target.value})} />
                 <Input placeholder="E-mail" value={form.email} onChange={e => setForm({...form, email:e.target.value})} />
+                <Input placeholder="CEP" value={form.zip_code} onChange={e => setForm({...form, zip_code:e.target.value})} />
+                <Input placeholder="Rua e número" value={form.address} onChange={e => setForm({...form, address:e.target.value})} />
                 <Input placeholder="Cidade" value={form.city} onChange={e => setForm({...form, city:e.target.value})} />
                 <Input placeholder="UF" maxLength={2} value={form.state} onChange={e => setForm({...form, state:e.target.value})} />
               </div>
