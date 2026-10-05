@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { enterCompanyAsMaster } from "@/services/company";
 
 type Company = {
@@ -49,6 +50,13 @@ function MasterPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createSaving, setCreateSaving] = useState(false);
+  const [createLogo, setCreateLogo] = useState<File | null>(null);
+  const [createForm, setCreateForm] = useState({
+    name: "", trade_name: "", document: "", email: "", phone: "", whatsapp_number: "",
+    city: "", state: "", owner_name: "", username: "", password: "",
+  });
   const [selected, setSelected] = useState<Company | null>(null);
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [saving, setSaving] = useState(false);
@@ -68,6 +76,34 @@ function MasterPage() {
   }
 
   useEffect(() => { void load(); }, []);
+
+  async function createCompany() {
+    if (createSaving) return;
+    if (!createForm.name.trim() || !createForm.username.trim() || !createForm.password) {
+      setError("Preencha nome da empresa, nome de usuário e senha.");
+      return;
+    }
+    setCreateSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      const body = new FormData();
+      Object.entries(createForm).forEach(([key, value]) => body.append(key, value));
+      if (createLogo) body.append("logo", createLogo);
+      const { data, error: invokeError } = await supabase.functions.invoke("master-create-company", { body });
+      if (invokeError) throw new Error(invokeError.message);
+      if (!data?.success) throw new Error(data?.error || "Não foi possível criar a empresa.");
+      setCreating(false);
+      setCreateLogo(null);
+      setCreateForm({ name: "", trade_name: "", document: "", email: "", phone: "", whatsapp_number: "", city: "", state: "", owner_name: "", username: "", password: "" });
+      setSuccess(`Empresa criada com sucesso. Usuário: ${data.username}`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Não foi possível criar a empresa.");
+    } finally {
+      setCreateSaving(false);
+    }
+  }
 
   async function openCompany(company: Company) {
     setError("");
@@ -194,9 +230,14 @@ function MasterPage() {
             <h1 className="mt-1 text-3xl font-bold">Painel Master</h1>
             <p className="text-sm text-muted-foreground">Gerencie todas as empresas da plataforma.</p>
           </div>
-          <Button variant="outline" onClick={() => { void supabase.auth.signOut(); location.href = "/auth"; }}>
-            Sair
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => { setError(""); setSuccess(""); setCreating(true); }}>
+              + Nova empresa
+            </Button>
+            <Button variant="outline" onClick={() => { void supabase.auth.signOut(); location.href = "/auth"; }}>
+              Sair
+            </Button>
+          </div>
         </header>
 
         <section className="grid gap-4 sm:grid-cols-3">
@@ -231,6 +272,63 @@ function MasterPage() {
             </div>
           }
         </section>
+
+        {creating && (
+          <section className="fixed inset-0 z-[60] overflow-y-auto bg-background/95 p-4 backdrop-blur-sm md:p-8">
+            <div className="mx-auto max-w-3xl rounded-xl border bg-card p-5 shadow-xl md:p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">Cadastro</p>
+                  <h2 className="text-2xl font-bold">Nova empresa</h2>
+                  <p className="text-sm text-muted-foreground">Crie a empresa e o acesso do proprietário em uma única etapa.</p>
+                </div>
+                <Button variant="outline" onClick={() => setCreating(false)}>Fechar</Button>
+              </div>
+
+              <div className="mt-6 space-y-5">
+                <div>
+                  <h3 className="font-semibold">Dados da empresa</h3>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:col-span-2"><Label>Nome da empresa *</Label><Input placeholder="Ex.: Lava Jato Premium" value={createForm.name} onChange={e => setCreateForm({...createForm, name:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>Nome fantasia</Label><Input value={createForm.trade_name} onChange={e => setCreateForm({...createForm, trade_name:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>CNPJ</Label><Input value={createForm.document} onChange={e => setCreateForm({...createForm, document:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>E-mail da empresa</Label><Input type="email" value={createForm.email} onChange={e => setCreateForm({...createForm, email:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>Telefone</Label><Input value={createForm.phone} onChange={e => setCreateForm({...createForm, phone:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>WhatsApp</Label><Input placeholder="(48) 99999-9999" value={createForm.whatsapp_number} onChange={e => setCreateForm({...createForm, whatsapp_number:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>Cidade</Label><Input value={createForm.city} onChange={e => setCreateForm({...createForm, city:e.target.value})} /></div>
+                    <div className="space-y-1.5"><Label>UF</Label><Input maxLength={2} value={createForm.state} onChange={e => setCreateForm({...createForm, state:e.target.value.toUpperCase()})} /></div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <h3 className="font-semibold">Logo</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, WEBP ou SVG, até 3 MB.</p>
+                  <Input className="mt-3" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => setCreateLogo(e.target.files?.[0] ?? null)} />
+                  {createLogo && <p className="mt-2 text-xs text-muted-foreground">Selecionada: {createLogo.name}</p>}
+                </div>
+
+                <div>
+                  <h3 className="font-semibold">Acesso ao painel</h3>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5"><Label>Nome de usuário *</Label><Input autoComplete="off" placeholder="ex.: lavajato123" value={createForm.username} onChange={e => setCreateForm({...createForm, username:e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, "")})} /></div>
+                    <div className="space-y-1.5"><Label>Senha *</Label><Input type="password" autoComplete="new-password" minLength={6} placeholder="Mínimo 6 caracteres" value={createForm.password} onChange={e => setCreateForm({...createForm, password:e.target.value})} /></div>
+                    <div className="space-y-1.5 sm:col-span-2"><Label>Nome do responsável</Label><Input value={createForm.owner_name} onChange={e => setCreateForm({...createForm, owner_name:e.target.value})} /></div>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">O usuário poderá entrar diretamente no painel administrativo e terá os dados isolados desta empresa.</p>
+                </div>
+
+                {error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+
+                <div className="flex justify-end gap-2 border-t pt-5">
+                  <Button variant="outline" onClick={() => setCreating(false)} disabled={createSaving}>Cancelar</Button>
+                  <Button disabled={createSaving || !createForm.name.trim() || !createForm.username.trim() || createForm.password.length < 6} onClick={() => { void createCompany(); }}>
+                    {createSaving ? "Criando..." : "Criar empresa e acesso"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {selected && (
           <section className="fixed inset-0 z-50 overflow-y-auto bg-background/95 p-4 backdrop-blur-sm md:p-8">
