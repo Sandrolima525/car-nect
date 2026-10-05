@@ -86,7 +86,11 @@ function AuthPage() {
       return;
     }
 
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const loginIdentifier = email.trim();
+    const loginEmail = loginIdentifier.includes("@")
+      ? loginIdentifier
+      : `${loginIdentifier.toLowerCase()}@accounts.carnnect.app`;
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
 
     // Some browser/storage configurations can report an auth error even after
     // Supabase has established the session. Trust the session when it exists.
@@ -138,11 +142,11 @@ function AuthPage() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
+            <Label htmlFor="email">{mode === "login" ? "E-mail ou nome de usuário" : "E-mail"}</Label>
             <Input
               id="email"
-              type="email"
-              autoComplete="email"
+              type={mode === "login" ? "text" : "email"}
+              autoComplete={mode === "login" ? "username" : "email"}
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
