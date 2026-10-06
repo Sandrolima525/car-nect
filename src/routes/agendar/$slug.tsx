@@ -94,7 +94,7 @@ function PublicBookingPage() {
   const whatsappNumber = rawWhatsapp.startsWith("55") ? rawWhatsapp : rawWhatsapp ? "55" + rawWhatsapp : "";
   const companyDisplayName = company?.name ?? company?.trade_name ?? "empresa";
   const whatsappAvailabilityMessage = encodeURIComponent(`Olá! Gostaria de saber quais horários estão disponíveis para atendimento na ${companyDisplayName}.`);
-  const whatsappMessage = encodeURIComponent(`Olá! Fiz uma solicitação de agendamento pela agenda online da ${companyDisplayName}.\\n\\nCliente: ${name}\\nWhatsApp: ${phone}\\nVeículo: ${[vehicleBrand, model].filter(Boolean).join(" " ) || "Não informado"}\\nPlaca: ${plate || "Não informada"}\\nServiços: ${selectedServices.map(s => s.name).join(", ")}\\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\\nHorário: ${time}\\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\\n\\nAguardo a confirmação.`);
+  const whatsappMessage = encodeURIComponent(`Olá! Fiz uma solicitação de agendamento pela agenda online da ${companyDisplayName}.\n\nCliente: ${name}\nWhatsApp: ${phone}\nVeículo: ${[vehicleBrand, model].filter(Boolean).join(" " ) || "Não informado"}\nPlaca: ${plate || "Não informada"}\nServiços: ${selectedServices.map(s => s.name).join(", ")}\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\nHorário: ${time}\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\n\nAguardo a confirmação.`);
   const mapQuery = [company.address, company.city, company.state, company.zip_code].filter(Boolean).join(", ");
   const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`;\n  const mapOpenUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
 
