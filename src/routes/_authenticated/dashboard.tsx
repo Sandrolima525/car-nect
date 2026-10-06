@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, DollarSign, Plus, TrendingUp, Users, CheckCircle2, Hourglass, XCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,8 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showFinancials, setShowFinancials] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const scrollChart = (amount: number) => chartRef.current?.scrollBy({ left: amount, behavior: "smooth" });
 
   const load = async () => {
     try {
@@ -101,7 +103,7 @@ function DashboardPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 overflow-x-hidden pb-10 sm:space-y-6">
+    <div className="mx-auto min-w-0 w-full max-w-7xl space-y-5 overflow-x-hidden pb-10 sm:space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><TrendingUp className="h-4 w-4" />Visão financeira</div><h1 className="mt-1 text-3xl font-bold tracking-tight">Dashboard</h1><p className="text-sm text-muted-foreground">Acompanhe faturamento, agenda e crescimento em um só lugar.</p></div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto"><Button variant="outline" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button><div className="flex h-10 min-w-0 flex-1 items-center justify-center rounded-xl border bg-background px-3 text-center text-xs font-semibold capitalize sm:flex-none sm:text-sm">{new Date(month + "-15T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div><Button variant="outline" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button><Button asChild><Link to="/agenda"><Plus className="mr-2 h-4 w-4" />Agendar</Link></Button></div>
@@ -122,7 +124,7 @@ function DashboardPage() {
         <Kpi icon={Users} label="Clientes" value={loading ? "—" : String(customers)} helper={online + " agendamento(s) online no mês"} />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4">
         <MiniStatus icon={Hourglass} label="Aguardando" value={statusSummary.pending} />
         <MiniStatus icon={CalendarDays} label="Confirmados" value={statusSummary.confirmed} />
         <MiniStatus icon={CheckCircle2} label="Concluídos" value={statusSummary.completed} />
@@ -130,18 +132,28 @@ function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-        <Card className="rounded-2xl border-border/60 shadow-sm">
-          <CardContent className="p-5">
-            <div className="mb-6 flex items-center justify-between"><div><h2 className="font-bold">Faturamento por dia</h2><p className="text-xs text-muted-foreground">Somente atendimentos concluídos</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{money(billed)}</span></div>
-            <div className="flex h-56 items-end gap-1 overflow-x-auto pb-5">
-              {days.map((day) => <div key={day.date} className="group flex h-full min-w-[14px] flex-1 flex-col justify-end"><div className="relative flex-1"><div className="absolute bottom-0 left-0 right-0 rounded-t-md bg-primary/70 transition-all group-hover:bg-primary" style={{ height: Math.max(day.revenue ? 6 : 1, (day.revenue / maxDay) * 100) + "%" }} title={day.day + " · " + money(day.revenue)} /></div><span className="mt-2 text-center text-[9px] text-muted-foreground">{day.day}</span></div>)}
+        <Card className="min-w-0 rounded-2xl border-border/60 shadow-sm">
+          <CardContent className="min-w-0 p-4 sm:p-5">
+            <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
+              <div className="min-w-0"><h2 className="truncate font-bold">Faturamento por dia</h2><p className="text-xs text-muted-foreground">Somente atendimentos concluídos</p></div>
+              <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{money(billed)}</span>
+            </div>
+            <div className="mb-2 flex items-center justify-between rounded-xl border bg-muted/20 p-1">
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => scrollChart(-240)} aria-label="Ver dias anteriores"><ChevronLeft className="h-4 w-4" /></Button>
+              <span className="text-[10px] font-medium text-muted-foreground sm:text-xs">Deslize para ver todos os dias</span>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => scrollChart(240)} aria-label="Ver próximos dias"><ChevronRight className="h-4 w-4" /></Button>
+            </div>
+            <div ref={chartRef} className="w-full overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:thin]">
+              <div className="flex h-56 min-w-[980px] items-end gap-2 px-1">
+                {days.map((day) => <div key={day.date} className="group flex h-full w-7 shrink-0 flex-col justify-end sm:w-8"><div className="relative flex-1"><div className="absolute bottom-0 left-0 right-0 rounded-t-md bg-primary/70 transition-all group-hover:bg-primary" style={{ height: Math.max(day.revenue ? 6 : 1, (day.revenue / maxDay) * 100) + "%" }} title={day.day + " · " + money(day.revenue)} /></div><span className="mt-2 text-center text-[9px] font-medium text-muted-foreground">{day.day}</span></div>)}
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-border/60 shadow-sm">
-          <CardContent className="p-5">
-            <div className="mb-5"><h2 className="font-bold">Resumo do negócio</h2><p className="text-xs text-muted-foreground">Indicadores atuais</p></div>
+        <Card className="min-w-0 rounded-2xl border-border/60 shadow-sm">
+          <CardContent className="min-w-0 p-4 sm:p-5">
+            <div className="mb-5 min-w-0"><h2 className="font-bold">Resumo do negócio</h2><p className="text-xs text-muted-foreground">Indicadores atuais</p></div>
             <div className="space-y-4">
               <Line label="Serviços ativos" value={String(servicesCount)} />
               <Line label="Clientes cadastrados" value={String(customers)} />
@@ -154,8 +166,8 @@ function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <Card className="rounded-2xl border-border/60">
-          <CardContent className="p-5">
+        <Card className="min-w-0 rounded-2xl border-border/60">
+          <CardContent className="min-w-0 p-5">
             <div className="mb-4 flex items-center justify-between"><div><h2 className="font-bold">Próximos atendimentos</h2><p className="text-xs text-muted-foreground">A partir de hoje</p></div><Button variant="ghost" size="sm" asChild><Link to="/agenda">Ver agenda</Link></Button></div>
             <div className="divide-y">{items.filter((item) => item.appointment_date >= today).slice(0, 6).map((item) => <div key={item.id} className="flex items-center gap-3 py-3"><div className="w-14 rounded-xl bg-muted p-2 text-center"><p className="text-xs font-bold">{item.appointment_time.slice(0, 5)}</p><p className="text-[9px] text-muted-foreground">{new Date(item.appointment_date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</p></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.customer_name}</p><p className="text-xs text-muted-foreground">{item.source === "online" ? "Agenda online" : "Agendamento interno"}</p></div><span className="font-semibold">{money(item.total_price)}</span></div>)}</div>
             {items.filter((item) => item.appointment_date >= today).length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Nenhum próximo atendimento.</p>}
@@ -213,7 +225,7 @@ function FinancialKpi({ realized, projected, realizedHelper, projectedHelper, vi
 function Kpi({ icon: Icon, label, value, helper }: { icon: typeof DollarSign; label: string; value: string; helper: string }) {
   return <Card className="rounded-2xl border-border/60 shadow-sm"><CardContent className="p-5"><div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p><div className="rounded-xl bg-primary/10 p-2 text-primary"><Icon className="h-4 w-4" /></div></div><p className="mt-4 text-2xl font-black tracking-tight">{value}</p><p className="mt-1 text-xs text-muted-foreground">{helper}</p></CardContent></Card>;
 }
-function Line({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between border-b border-border/60 pb-3 text-sm last:border-0 last:pb-0"><span className="text-muted-foreground">{label}</span><strong>{value}</strong></div>; }
+function Line({ label, value }: { label: string; value: string }) { return <div className="flex min-w-0 items-center justify-between gap-4 border-b border-border/60 pb-3 text-sm last:border-0 last:pb-0"><span className="min-w-0 truncate text-muted-foreground">{label}</span><strong className="shrink-0 whitespace-nowrap text-right">{value}</strong></div>; }
 function Insight({ icon: Icon, text }: { icon: typeof DollarSign; text: string }) { return <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3 text-sm"><Icon className="h-4 w-4 shrink-0 text-primary" /><span>{text}</span></div>; }
 
 function MiniStatus({ icon: Icon, label, value }: { icon: typeof DollarSign; label: string; value: number }) { return <Card className="rounded-2xl border-border/60"><CardContent className="flex items-center gap-3 p-4"><div className="rounded-xl bg-primary/10 p-2 text-primary"><Icon className="h-4 w-4" /></div><div><p className="text-xs text-muted-foreground">{label}</p><p className="text-xl font-bold">{value}</p></div></CardContent></Card>; }
