@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Clock3, Edit3, Plus, Search, Sparkles, Trash2 } from "lucide-react";
+import { Check, Clock3, Edit3, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -42,7 +42,7 @@ function ServicesPage() {
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("60");
   const [category, setCategory] = useState("Lavagem");
-  const [vehicleCategory, setVehicleCategory] = useState("all");
+  const [vehicleCategories, setVehicleCategories] = useState<string[]>(["all"]);
   const [active, setActive] = useState(true);
 
   const load = async () => {
@@ -71,13 +71,13 @@ function ServicesPage() {
 
   const reset = () => {
     setEditing(null); setName(""); setDescription(""); setPrice(""); setDuration("60");
-    setCategory("Lavagem"); setVehicleCategory("all"); setActive(true);
+    setCategory("Lavagem"); setVehicleCategories(["all"]); setActive(true);
   };
 
   const edit = (item: Service) => {
     setEditing(item); setName(item.name); setDescription(item.description ?? ""); setPrice(String(item.price));
     setDuration(String(item.estimated_duration ?? 60)); setCategory(item.category ?? "Lavagem");
-    setVehicleCategory(item.vehicle_category || "all"); setActive(item.active); setOpen(true);
+    setVehicleCategories(parseVehicleCategories(item.vehicle_category)); setActive(item.active); setOpen(true);
   };
 
   const save = async () => {
@@ -96,7 +96,7 @@ function ServicesPage() {
         price: numericPrice,
         estimated_duration: Math.round(numericDuration),
         category: category.trim() || null,
-        vehicle_category: vehicleCategory,
+        vehicle_category: serializeVehicleCategories(vehicleCategories),
         active,
         updated_at: new Date().toISOString(),
       };
@@ -156,7 +156,7 @@ function ServicesPage() {
           <div className="space-y-5">
             <div><Label>Nome *</Label><Input className="mt-2" value={name} onChange={(e) => setName(e.target.value)} placeholder="Lavagem completa" /></div>
             <div className="grid gap-4 sm:grid-cols-2"><div><Label>Valor (R$) *</Label><Input className="mt-2" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="80,00" /></div><div><Label>Duração (minutos) *</Label><Input className="mt-2" type="number" min="5" step="5" value={duration} onChange={(e) => setDuration(e.target.value)} /></div></div>
-            <div className="grid gap-4 sm:grid-cols-2"><div><Label>Categoria</Label><Input className="mt-2" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Lavagem" /></div><div><Label>Tipo de veículo</Label><select className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm" value={vehicleCategory} onChange={(e) => setVehicleCategory(e.target.value)}><option value="all">Todos</option><option value="Hatch">Hatch</option><option value="Sedan">Sedan</option><option value="SUV/Picape">SUV / Picape</option></select></div></div>
+            <div className="grid gap-4 sm:grid-cols-2"><div><Label>Categoria</Label><Input className="mt-2" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Lavagem" /></div><div><Label>Tipos de veículo</Label><div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border p-2">{VEHICLE_CATEGORIES.map((vehicle) => { const checked = vehicleCategories.includes("all") ? vehicle === "all" : vehicleCategories.includes(vehicle); return <button type="button" key={vehicle} onClick={() => toggleVehicleCategory(vehicle)} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold transition ${checked ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "hover:bg-muted"}`}>{checked ? <Check className="h-3.5 w-3.5 shrink-0" /> : <span className="h-3.5 w-3.5 shrink-0 rounded border" />}{vehicle === "all" ? "Todos" : vehicle}</button>})}</div><p className="mt-1 text-[11px] text-muted-foreground">Selecione todos os tipos aceitos para este serviço.</p></div></div>
             <div><Label>Descrição</Label><Textarea className="mt-2" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="O que está incluído no serviço?" /></div>
             <label className="flex items-center justify-between rounded-xl border p-4"><div><p className="text-sm font-semibold">Disponível para agendamento</p><p className="text-xs text-muted-foreground">Serviços inativos não aparecem na agenda.</p></div><Switch checked={active} onCheckedChange={setActive} /></label>
             <Button className="w-full" onClick={() => void save()} disabled={saving}>{saving ? "Salvando..." : "Salvar serviço"}</Button>
