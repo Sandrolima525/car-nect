@@ -96,7 +96,8 @@ function PublicBookingPage() {
   const whatsappAvailabilityMessage = encodeURIComponent(`Olá! Gostaria de saber quais horários estão disponíveis para atendimento na ${companyDisplayName}.`);
   const whatsappMessage = encodeURIComponent(`Olá! Fiz uma solicitação de agendamento pela agenda online da ${companyDisplayName}.\n\nCliente: ${name}\nWhatsApp: ${phone}\nVeículo: ${[vehicleBrand, model].filter(Boolean).join(" " ) || "Não informado"}\nPlaca: ${plate || "Não informada"}\nServiços: ${selectedServices.map(s => s.name).join(", ")}\nData: ${new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}\nHorário: ${time}\nValor total: R$ ${totalPrice.toFixed(2).replace(".", ",")}\n\nAguardo a confirmação.`);
   const mapQuery = [company.address, company.city, company.state, company.zip_code].filter(Boolean).join(", ");
-  const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`;\n  const mapOpenUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+  const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`;
+  const mapOpenUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
 
   if (loading) return <div className="flex min-h-screen items-center justify-center p-6 text-muted-foreground">Carregando...</div>;
   if (!company) return <div className="flex min-h-screen items-center justify-center p-6"><Card className="w-full max-w-md"><CardContent className="p-6 text-center text-destructive">{error || "Página não encontrada."}</CardContent></Card></div>;
