@@ -64,7 +64,7 @@ function MasterPage() {
   const [saving, setSaving] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [form, setForm] = useState({
-    name: "", trade_name: "", document: "", phone: "", email: "", city: "", state: "",
+    name: "", trade_name: "", document: "", phone: "", email: "", city: "", state: "", address: "", zip_code: "",
     public_booking_enabled: true,
   });
 
