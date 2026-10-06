@@ -18,6 +18,13 @@ export const Route = createFileRoute("/agendar/$slug")({
 type Company = { id: string; name: string; trade_name: string | null; phone: string | null; whatsapp_number: string | null; address: string | null; zip_code: string | null; city: string | null; state: string | null; logo_url: string | null; brand_colors: BrandColors | null };
 type Service = { id: string; name: string; price: number; estimated_duration: number | null; vehicle_category: string | null; category: string | null };
 
+const PUBLIC_VEHICLE_CATEGORIES = ["Hatch", "Sedan", "SUV/Picape", "Moto", "Van", "Caminhonete", "Utilitário"];
+
+function parseVehicleCategories(value: string | null | undefined) {
+  const values = (value ?? "all").split(",").map((item) => item.trim()).filter(Boolean);
+  return values.length ? values : ["all"];
+}
+
 function PublicBookingPage() {
   const { slug } = Route.useParams();
   const [company, setCompany] = useState<Company | null>(null);
@@ -41,7 +48,11 @@ function PublicBookingPage() {
   const [bookingReference, setBookingReference] = useState("");
   const todayLocal = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
-  const compatibleServices = useMemo(() => services.filter(s => !vehicleCategory || !s.vehicle_category || s.vehicle_category === "all" || s.vehicle_category === vehicleCategory), [services, vehicleCategory]);
+  const compatibleServices = useMemo(() => services.filter(s => {
+    if (!vehicleCategory) return true;
+    const categories = parseVehicleCategories(s.vehicle_category);
+    return categories.includes("all") || categories.includes(vehicleCategory);
+  }), [services, vehicleCategory]);
   const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
   const baseServices = useMemo(() => compatibleServices.filter(s => s.category !== "Adicional"), [compatibleServices]);
   const addOnServices = useMemo(() => compatibleServices.filter(s => s.category === "Adicional"), [compatibleServices]);
@@ -64,6 +75,16 @@ function PublicBookingPage() {
       finally { setLoading(false); }
     })();
   }, [slug]);
+
+  useEffect(() => {
+    if (!company) return;
+    const refreshServices = async () => {
+      const result = await supabase.from("services").select("id,name,price,estimated_duration,vehicle_category,category").eq("company_id", company.id).eq("active", true).order("name");
+      if (!result.error) setServices((result.data ?? []) as Service[]);
+    };
+    const interval = window.setInterval(() => { void refreshServices(); }, 10000);
+    return () => window.clearInterval(interval);
+  }, [company]);
 
   useEffect(() => {
     if (!company || !serviceIds.length || !date) { setSlots([]); setTime(""); return; }
@@ -111,7 +132,7 @@ function PublicBookingPage() {
       <Card className="overflow-hidden border-border/60 shadow-xl shadow-black/[0.06]"><CardHeader className="border-b border-primary/10 bg-gradient-to-r from-primary/[0.08] via-muted/20 to-background p-6"><h2 className="text-lg font-semibold">Agendar atendimento</h2><p className="text-sm text-muted-foreground">Preencha seus dados e escolha os serviços.</p></CardHeader><CardContent className="space-y-5">
         {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
         <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" /></div><div className="space-y-2"><Label>WhatsApp *</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(48) 99999-9999" /></div></div>
-        <div className="space-y-2"><Label>Categoria do veículo *</Label><div className="grid grid-cols-3 gap-2">{["Hatch","Sedan","SUV/Picape"].map(v => <button type="button" key={v} onClick={() => setVehicleCategory(v)} className={`rounded-xl border p-3 text-sm font-semibold ${vehicleCategory === v ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>{v}</button>)}</div></div><div className="space-y-3"><Label>Serviços *</Label><div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lavagens e serviços</p><div className="grid gap-2">{baseServices.map(s => <label key={s.id} className={`group flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm ${serviceIds.includes(s.id) ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20" : "border-border/70 bg-background/60 hover:border-primary/40 hover:bg-primary/[0.035]"}`}><input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => { setServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setTime(""); }} className="h-4 w-4 accent-primary" /><span className="flex-1 text-sm font-medium">{s.name}</span><span className="text-xs text-muted-foreground">{s.estimated_duration ?? 60} min · R$ {Number(s.price).toFixed(2).replace(".", ",")}</span></label>)}</div></div>{addOnServices.length>0&&<div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Adicionais</p><div className="grid gap-2">{addOnServices.map(s => <label key={s.id} className={`group flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm ${serviceIds.includes(s.id) ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20" : "border-border/70 bg-background/60 hover:border-primary/40 hover:bg-primary/[0.035]"}`}><input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => { setServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setTime(""); }} className="h-4 w-4 accent-primary" /><span className="flex-1 text-sm font-medium">{s.name}</span><span className="text-xs text-muted-foreground">{s.estimated_duration ?? 60} min · R$ {Number(s.price).toFixed(2).replace(".", ",")}</span></label>)}</div></div>}</div>
+        <div className="space-y-2"><Label>Categoria do veículo *</Label><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{PUBLIC_VEHICLE_CATEGORIES.map(v => <button type="button" key={v} onClick={() => { setVehicleCategory(v); setServiceIds([]); setTime(""); }} className={`rounded-xl border p-3 text-sm font-semibold transition ${vehicleCategory === v ? "border-primary bg-primary/10 text-primary shadow-sm" : "border-border hover:border-primary/40"}`}>{v}</button>)}</div><p className="text-xs text-muted-foreground">Os serviços exibidos abaixo mudam automaticamente conforme o tipo de veículo escolhido.</p></div><div className="space-y-3"><Label>Serviços *</Label><div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lavagens e serviços</p><div className="grid gap-2">{baseServices.map(s => <label key={s.id} className={`group flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm ${serviceIds.includes(s.id) ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20" : "border-border/70 bg-background/60 hover:border-primary/40 hover:bg-primary/[0.035]"}`}><input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => { setServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setTime(""); }} className="h-4 w-4 accent-primary" /><span className="flex-1 text-sm font-medium">{s.name}</span><span className="text-xs text-muted-foreground">{s.estimated_duration ?? 60} min · R$ {Number(s.price).toFixed(2).replace(".", ",")}</span></label>)}</div></div>{addOnServices.length>0&&<div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Adicionais</p><div className="grid gap-2">{addOnServices.map(s => <label key={s.id} className={`group flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm ${serviceIds.includes(s.id) ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20" : "border-border/70 bg-background/60 hover:border-primary/40 hover:bg-primary/[0.035]"}`}><input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => { setServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setTime(""); }} className="h-4 w-4 accent-primary" /><span className="flex-1 text-sm font-medium">{s.name}</span><span className="text-xs text-muted-foreground">{s.estimated_duration ?? 60} min · R$ {Number(s.price).toFixed(2).replace(".", ",")}</span></label>)}</div></div>}</div>
         <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Data *</Label><div className="relative"><CalendarDays className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" type="date" min={todayLocal} value={date < todayLocal ? todayLocal : date} onChange={e => { setDate(e.target.value); setTime(""); }} /></div></div><div className="space-y-2"><Label>Horário *</Label><Select value={time} onValueChange={setTime} disabled={!serviceIds.length || slotsLoading}><SelectTrigger><SelectValue placeholder={slotsLoading ? "Calculando..." : slots.length ? "Horários disponíveis" : "Nenhum horário"} /></SelectTrigger><SelectContent>{slots.map(s => <SelectItem key={s} value={s}><Clock3 className="mr-2 inline h-3.5 w-3.5" />{s}</SelectItem>)}</SelectContent></Select></div></div>
         {selectedServices.length > 0 && <div className="rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.08] to-background p-4 text-sm shadow-sm"><strong>{selectedServices.map(s => s.name).join(" + ")}</strong><br />Duração total: {totalDuration} minutos · Valor total: R$ {totalPrice.toFixed(2).replace(".", ",")}</div>}
         <div className="rounded-2xl border border-primary/10 bg-primary/[0.02] p-4 shadow-inner"><p className="mb-3 font-medium">Veículo</p><div className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label>Placa</Label><Input value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="ABC1D23" /></div><div className="space-y-2"><Label>Marca</Label><Input value={vehicleBrand} onChange={e => setVehicleBrand(e.target.value)} placeholder="Honda" /></div><div className="space-y-2"><Label>Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Civic" /></div></div></div>
