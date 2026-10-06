@@ -26,6 +26,26 @@ type Service = {
 
 const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+const VEHICLE_CATEGORIES = ["all", "Hatch", "Sedan", "SUV/Picape", "Moto", "Van", "Caminhonete", "Utilitário"];
+
+function parseVehicleCategories(value: string | null | undefined) {
+  const values = (value ?? "all").split(",").map((item) => item.trim()).filter(Boolean);
+  return values.length ? values : ["all"];
+}
+
+function serializeVehicleCategories(values: string[]) {
+  return values.includes("all") || values.length === 0 ? "all" : values.join(",");
+}
+
+function toggleVehicleCategory(value: string, current: string[]) {
+  if (value === "all") return ["all"];
+  const withoutAll = current.filter((item) => item !== "all");
+  const next = withoutAll.includes(value)
+    ? withoutAll.filter((item) => item !== value)
+    : [...withoutAll, value];
+  return next.length ? next : ["all"];
+}
+
 function ServicesPage() {
   const [companyId, setCompanyId] = useState("");
   const [items, setItems] = useState<Service[]>([]);
@@ -156,7 +176,7 @@ function ServicesPage() {
           <div className="space-y-5">
             <div><Label>Nome *</Label><Input className="mt-2" value={name} onChange={(e) => setName(e.target.value)} placeholder="Lavagem completa" /></div>
             <div className="grid gap-4 sm:grid-cols-2"><div><Label>Valor (R$) *</Label><Input className="mt-2" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="80,00" /></div><div><Label>Duração (minutos) *</Label><Input className="mt-2" type="number" min="5" step="5" value={duration} onChange={(e) => setDuration(e.target.value)} /></div></div>
-            <div className="grid gap-4 sm:grid-cols-2"><div><Label>Categoria</Label><Input className="mt-2" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Lavagem" /></div><div><Label>Tipos de veículo</Label><div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border p-2">{VEHICLE_CATEGORIES.map((vehicle) => { const checked = vehicleCategories.includes("all") ? vehicle === "all" : vehicleCategories.includes(vehicle); return <button type="button" key={vehicle} onClick={() => toggleVehicleCategory(vehicle)} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold transition ${checked ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "hover:bg-muted"}`}>{checked ? <Check className="h-3.5 w-3.5 shrink-0" /> : <span className="h-3.5 w-3.5 shrink-0 rounded border" />}{vehicle === "all" ? "Todos" : vehicle}</button>})}</div><p className="mt-1 text-[11px] text-muted-foreground">Selecione todos os tipos aceitos para este serviço.</p></div></div>
+            <div className="grid gap-4 sm:grid-cols-2"><div><Label>Categoria</Label><Input className="mt-2" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Lavagem" /></div><div><Label>Tipos de veículo</Label><div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border p-2">{VEHICLE_CATEGORIES.map((vehicle) => { const checked = vehicleCategories.includes("all") ? vehicle === "all" : vehicleCategories.includes(vehicle); return <button type="button" key={vehicle} onClick={() => setVehicleCategories((current) => toggleVehicleCategory(vehicle, current))} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold transition ${checked ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "hover:bg-muted"}`}>{checked ? <Check className="h-3.5 w-3.5 shrink-0" /> : <span className="h-3.5 w-3.5 shrink-0 rounded border" />}{vehicle === "all" ? "Todos" : vehicle}</button>})}</div><p className="mt-1 text-[11px] text-muted-foreground">Selecione todos os tipos aceitos para este serviço.</p></div></div>
             <div><Label>Descrição</Label><Textarea className="mt-2" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="O que está incluído no serviço?" /></div>
             <label className="flex items-center justify-between rounded-xl border p-4"><div><p className="text-sm font-semibold">Disponível para agendamento</p><p className="text-xs text-muted-foreground">Serviços inativos não aparecem na agenda.</p></div><Switch checked={active} onCheckedChange={setActive} /></label>
             <Button className="w-full" onClick={() => void save()} disabled={saving}>{saving ? "Salvando..." : "Salvar serviço"}</Button>
@@ -167,6 +187,7 @@ function ServicesPage() {
   );
 }
 
-function vehicleLabel(value: string) {
-  return value === "all" ? "Todos os veículos" : value;
+function vehicleLabel(value: string | null | undefined) {
+  const categories = parseVehicleCategories(value);
+  return categories.includes("all") ? "Todos os veículos" : categories.join(" · ");
 }
