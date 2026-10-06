@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MessageCircle, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, MessageCircle, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -62,6 +62,7 @@ function AgendaPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [vehicleCategory, setVehicleCategory] = useState("Hatch");
+  const [vehicleCategoriesOpen, setVehicleCategoriesOpen] = useState(false);
   const [plate, setPlate] = useState("");
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
@@ -168,7 +169,7 @@ function AgendaPage() {
   }, [items, filter, query]);
 
   const resetForm = () => {
-    setName(""); setPhone(""); setVehicleCategory("Hatch"); setPlate(""); setBrand(""); setModel("");
+    setName(""); setPhone(""); setVehicleCategory("Hatch"); setVehicleCategoriesOpen(false); setPlate(""); setBrand(""); setModel("");
     setServiceIds([]); setTime(""); setSlots([]); setNotes("");
   };
 
@@ -336,7 +337,15 @@ function AgendaPage() {
             </div>
             <div>
               <Label>Veículo</Label>
-              <div className="mt-2 grid grid-cols-3 gap-2">{["Hatch", "Sedan", "SUV/Picape"].map((value) => <button key={value} type="button" onClick={() => setVehicleCategory(value)} className={`rounded-xl border p-3 text-sm font-semibold ${vehicleCategory === value ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>{value}</button>)}</div>
+              <div className="mt-2 overflow-hidden rounded-xl border border-border bg-background">
+                <button type="button" onClick={() => setVehicleCategoriesOpen((open) => !open)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-muted/50">
+                  <span><span className="block text-sm font-semibold">{vehicleCategory}</span><span className="block text-xs text-muted-foreground">Clique para ver todas as categorias</span></span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${vehicleCategoriesOpen ? "rotate-180" : ""}`} />
+                </button>
+                {vehicleCategoriesOpen && <div className="grid grid-cols-2 gap-2 border-t bg-muted/20 p-3 sm:grid-cols-4">
+                  {["Hatch", "Sedan", "SUV/Picape", "Moto", "Van", "Caminhonete", "Utilitário"].map((value) => <button key={value} type="button" onClick={() => { setVehicleCategory(value); setServiceIds([]); setTime(""); setVehicleCategoriesOpen(false); }} className={`rounded-xl border p-3 text-sm font-semibold transition ${vehicleCategory === value ? "border-primary bg-primary/10 text-primary shadow-sm" : "border-border bg-background hover:border-primary/40"}`}>{value}</button>)}
+                </div>}
+              </div>
             </div>
             <div>
               <Label>Serviços *</Label>
