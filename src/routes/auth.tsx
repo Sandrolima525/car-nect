@@ -27,7 +27,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup" | "recover">("login");
+  const [mode] = useState<"login">("login");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -181,37 +181,9 @@ function AuthPage() {
                   : "Enviar link"}
           </Button>
 
-          <div className="space-y-1">
-            <button
-              type="button"
-              className="w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
-              onClick={() => {
-                setMode(mode === "login" ? "signup" : "login");
-                setError(null);
-                setMessage(null);
-              }}
-            >
-              {mode === "login" ? "Criar uma conta nova" : "Já tenho conta, entrar"}
-            </button>
-            {mode !== "recover" && (
-              <button
-                type="button"
-                className="w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
-                onClick={() => {
-                  setMode("recover");
-                  setError(null);
-                  setMessage(null);
-                }}
-              >
-                Esqueci minha senha
-              </button>
-            )}
-          </div>
+
         </form>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Ao criar a conta você poderá cadastrar sua empresa no primeiro acesso.
-        </p>
       </div>
     </div>
   );
