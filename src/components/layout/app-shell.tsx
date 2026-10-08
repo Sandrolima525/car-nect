@@ -110,6 +110,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (!company?.id) { setAccessExpiresAt(null); return; }
+    let active = true;
+    const loadAccess = async () => {
+      const { data, error } = await supabase.from("companies").select("access_expires_at").eq("id", company.id).maybeSingle();
+      if (active) setAccessExpiresAt(!error && data?.access_expires_at ? data.access_expires_at : null);
+    };
+    void loadAccess();
+    return () => { active = false; };
+  }, [company?.id]);
+
+  useEffect(() => {
     if (!company?.id) return;
     const loadBrand = async () => {
       const { data } = await (supabase as any).from("companies").select("brand_colors").eq("id", company.id).maybeSingle();
