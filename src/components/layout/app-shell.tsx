@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, LogOut, Menu, Waves } from "lucide-react";
+import { Bell, LogOut, Menu, Waves, Clock3, MessageCircle } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 type Notification = { id: string; appointment_id: string | null; type: string; title: string; message: string; read_at: string | null; created_at: string };
@@ -74,6 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [masterMode, setMasterMode] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [accessExpiresAt, setAccessExpiresAt] = useState<string | null>(null);
   const current = findNavItem(pathname);
   const displayName = profile?.full_name ?? profile?.email ?? "Usuário";
   useEffect(() => { setMobileOpen(false); }, [pathname]);
