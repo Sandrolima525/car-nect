@@ -18,6 +18,8 @@ type Company = {
   address: string | null;
   zip_code: string | null;
   active: boolean;
+  access_starts_at: string | null;
+  access_expires_at: string | null;
   public_booking_slug: string | null;
   public_booking_enabled: boolean;
   owner_email: string | null;
@@ -46,6 +48,16 @@ export const Route = createFileRoute("/admin")({
   component: MasterPage,
 });
 
+function accessInfo(expiresAt: string | null, active: boolean) {
+  if (!active) return { label: "Bloqueada", className: "bg-muted text-muted-foreground", days: null };
+  if (!expiresAt) return { label: "Sem validade", className: "bg-blue-100 text-blue-700", days: null };
+  const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000);
+  if (days <= 0) return { label: "Expirada", className: "bg-red-100 text-red-700", days: 0 };
+  if (days <= 3) return { label: `Expira em ${days}d`, className: "bg-red-100 text-red-700", days };
+  if (days <= 7) return { label: `Expira em ${days}d`, className: "bg-yellow-100 text-yellow-700", days };
+  return { label: "Ativa", className: "bg-green-100 text-green-700", days };
+}
+
 function MasterPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [search, setSearch] = useState("");
@@ -57,7 +69,7 @@ function MasterPage() {
   const [createLogo, setCreateLogo] = useState<File | null>(null);
   const [createForm, setCreateForm] = useState({
     name: "", trade_name: "", document: "", email: "", phone: "", whatsapp_number: "",
-    city: "", state: "", address: "", address_number: "", zip_code: "", owner_name: "", username: "", password: "",
+    city: "", state: "", address: "", address_number: "", zip_code: "", owner_name: "", username: "", password: "", access_days: "30",
   });
   const [selected, setSelected] = useState<Company | null>(null);
   const [users, setUsers] = useState<CompanyUser[]>([]);
@@ -66,6 +78,7 @@ function MasterPage() {
   const [form, setForm] = useState({
     name: "", trade_name: "", document: "", phone: "", email: "", city: "", state: "", address: "", zip_code: "",
     public_booking_enabled: true,
+    access_starts_at: "", access_expires_at: "",
   });
 
   async function load() {
@@ -97,7 +110,7 @@ function MasterPage() {
       if (!data?.success) throw new Error(data?.error || "Não foi possível criar a empresa.");
       setCreating(false);
       setCreateLogo(null);
-      setCreateForm({ name: "", trade_name: "", document: "", email: "", phone: "", whatsapp_number: "", city: "", state: "", owner_name: "", username: "", password: "" });
+      setCreateForm({ name: "", trade_name: "", document: "", email: "", phone: "", whatsapp_number: "", city: "", state: "", address: "", address_number: "", zip_code: "", owner_name: "", username: "", password: "", access_days: "30" });
       setSuccess(`Empresa criada com sucesso. Usuário: ${data.username}`);
       await load();
     } catch (e) {
@@ -122,6 +135,8 @@ function MasterPage() {
       address: company.address ?? "",
       zip_code: company.zip_code ?? "",
       public_booking_enabled: company.public_booking_enabled ?? true,
+      access_starts_at: company.access_starts_at ? company.access_starts_at.slice(0,16) : "",
+      access_expires_at: company.access_expires_at ? company.access_expires_at.slice(0,16) : "",
     });
     setUsers([]);
     setLoadingUsers(true);
@@ -162,6 +177,8 @@ function MasterPage() {
         _address: form.address.trim() || null,
         _zip_code: form.zip_code.trim() || null,
         _public_booking_enabled: form.public_booking_enabled,
+        _access_starts_at: form.access_starts_at ? new Date(form.access_starts_at).toISOString() : null,
+        _access_expires_at: form.access_expires_at ? new Date(form.access_expires_at).toISOString() : null,
       });
       if (rpcError) {
         setError(`Não foi possível salvar: ${rpcError.message}`);
@@ -179,6 +196,8 @@ function MasterPage() {
         address: form.address.trim() || null,
         zip_code: form.zip_code.trim() || null,
         public_booking_enabled: form.public_booking_enabled,
+        access_starts_at: form.access_starts_at ? new Date(form.access_starts_at).toISOString() : null,
+        access_expires_at: form.access_expires_at ? new Date(form.access_expires_at).toISOString() : null,
       };
       setSelected(updated);
       setCompanies(prev => prev.map(c => c.id === updated.id ? updated : c));
@@ -268,10 +287,10 @@ function MasterPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h2 className="font-semibold">{c.trade_name || c.name}</h2>
-                        <span className={`rounded-full px-2 py-0.5 text-xs ${c.active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>{c.active ? "Ativa" : "Bloqueada"}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${accessInfo(c.access_expires_at, c.active).className}`}>{accessInfo(c.access_expires_at, c.active).label}</span>
                       </div>
                       <p className="text-sm text-muted-foreground">{c.owner_email || "Sem responsável"}{c.city ? ` · ${c.city}/${c.state || ""}` : ""}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{c.customers_count || 0} clientes · {c.appointments_count || 0} agendamentos</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{c.customers_count || 0} clientes · {c.appointments_count || 0} agendamentos · {c.access_expires_at ? `válida até ${new Date(c.access_expires_at).toLocaleDateString("pt-BR")}` : "sem validade"}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2"><span className="rounded-lg border px-3 py-1.5 text-sm font-medium text-primary">Gerenciar →</span><span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); void enterCompany(c); }} onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); void enterCompany(c); } }} className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground">Entrar na empresa</span></div>
                   </div>
@@ -325,6 +344,7 @@ function MasterPage() {
                     <div className="space-y-1.5"><Label>Senha *</Label><Input type="password" autoComplete="new-password" minLength={6} placeholder="Mínimo 6 caracteres" value={createForm.password} onChange={e => setCreateForm({...createForm, password:e.target.value})} /></div>
                     <div className="space-y-1.5 sm:col-span-2"><Label>Nome do responsável</Label><Input value={createForm.owner_name} onChange={e => setCreateForm({...createForm, owner_name:e.target.value})} /></div>
                   </div>
+                  <div className="mt-4 space-y-2"><Label>Liberar acesso por (dias)</Label><Input type="number" min="1" max="3650" value={createForm.access_days} onChange={e => setCreateForm({...createForm, access_days:e.target.value})} /><p className="text-xs text-muted-foreground">Padrão: 30 dias. Ao vencer, o painel e a agenda pública serão bloqueados.</p></div>
                   <p className="mt-2 text-xs text-muted-foreground">O usuário poderá entrar diretamente no painel administrativo e terá os dados isolados desta empresa.</p>
                 </div>
 
@@ -363,6 +383,21 @@ function MasterPage() {
                 <Input placeholder="Rua e número" value={form.address} onChange={e => setForm({...form, address:e.target.value})} />
                 <Input placeholder="Cidade" value={form.city} onChange={e => setForm({...form, city:e.target.value})} />
                 <Input placeholder="UF" maxLength={2} value={form.state} onChange={e => setForm({...form, state:e.target.value})} />
+              </div>
+
+              <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div><p className="font-medium">Validade do acesso</p><p className="text-xs text-muted-foreground">Após o vencimento, o proprietário perde o acesso e a agenda pública fica indisponível.</p></div>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${accessInfo(selected.access_expires_at, selected.active).className}`}>{accessInfo(selected.access_expires_at, selected.active).label}</span>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div><Label>Início</Label><Input type="datetime-local" value={form.access_starts_at} onChange={e => setForm({...form, access_starts_at:e.target.value})} /></div>
+                  <div><Label>Vencimento</Label><Input type="datetime-local" value={form.access_expires_at} onChange={e => setForm({...form, access_expires_at:e.target.value})} /></div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[7,15,30,60,90,180,365].map(days => <Button key={days} size="sm" variant="outline" onClick={() => { const base = new Date(); base.setDate(base.getDate()+days); setForm({...form, access_starts_at:new Date().toISOString().slice(0,16), access_expires_at:base.toISOString().slice(0,16)}); }}>{days} dias</Button>)}
+                  <Button size="sm" onClick={async () => { const days = Number(prompt("Quantos dias deseja liberar?","30")); if (!days) return; const {data,error} = await supabase.rpc("admin_renew_company",{_company_id:selected.id,_days:days}); if(error){setError(error.message);return;} setForm({...form,access_expires_at:new Date(data).toISOString().slice(0,16)}); setSelected({...selected,active:true,access_expires_at:data}); setCompanies(prev=>prev.map(x=>x.id===selected.id?{...x,active:true,access_expires_at:data}:x)); setSuccess("Acesso renovado com sucesso."); }}>Renovar acesso</Button>
+                </div>
               </div>
 
               <div className="mt-6 rounded-lg border p-4">
