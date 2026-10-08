@@ -108,6 +108,16 @@ function MasterPage() {
       const { data, error: invokeError } = await supabase.functions.invoke("master-create-company", { body });
       if (invokeError) throw new Error(invokeError.message);
       if (!data?.success) throw new Error(data?.error || "Não foi possível criar a empresa.");
+      const accessDays = Math.max(1, Math.min(3650, Number(createForm.access_days) || 30));
+      const accessStart = new Date();
+      const accessExpiry = new Date(accessStart.getTime() + accessDays * 86400000);
+      const { error: validityError } = await supabase.rpc("admin_update_company", {
+        _company_id: data.company_id,
+        _name: createForm.name.trim(),
+        _access_starts_at: accessStart.toISOString(),
+        _access_expires_at: accessExpiry.toISOString(),
+      });
+      if (validityError) throw new Error(`Empresa criada, mas não foi possível definir a validade: ${validityError.message}`);
       setCreating(false);
       setCreateLogo(null);
       setCreateForm({ name: "", trade_name: "", document: "", email: "", phone: "", whatsapp_number: "", city: "", state: "", address: "", address_number: "", zip_code: "", owner_name: "", username: "", password: "", access_days: "30" });
