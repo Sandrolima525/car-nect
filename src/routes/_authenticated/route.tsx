@@ -9,6 +9,13 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
+    const { data: companyId } = await supabase.rpc("get_current_company_id");
+    if (companyId) {
+      const { data: company } = await supabase.from("companies").select("id,active,access_expires_at").eq("id", companyId).maybeSingle();
+      if (company && (!company.active || (company.access_expires_at && new Date(company.access_expires_at).getTime() <= Date.now()))) {
+        throw redirect({ to: "/acesso-expirado" });
+      }
+    }
     return { user: data.user };
   },
   component: AuthenticatedLayout,
