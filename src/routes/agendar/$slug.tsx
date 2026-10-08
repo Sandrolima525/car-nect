@@ -122,7 +122,7 @@ function PublicBookingPage() {
   const mapOpenUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
 
   if (loading) return <div className="flex min-h-screen items-center justify-center p-6 text-muted-foreground">Carregando...</div>;
-  if (!company) return <div className="flex min-h-screen items-center justify-center p-6"><Card className="w-full max-w-md"><CardContent className="p-6 text-center text-destructive">{error || "Página não encontrada."}</CardContent></Card></div>;
+  if (!company) return <div className="flex min-h-screen items-center justify-center bg-muted/20 p-6"><Card className="w-full max-w-md shadow-xl"><CardContent className="p-8 text-center"><Clock3 className="mx-auto mb-4 h-12 w-12 text-primary" /><h1 className="text-xl font-bold">Agendamentos indisponíveis</h1><p className="mt-2 text-sm text-muted-foreground">{error || "Esta agenda está temporariamente indisponível. O acesso da empresa pode ter expirado ou sido bloqueado."}</p><Button className="mt-6 w-full" asChild><a href={`https://wa.me/5548988368288?text=${encodeURIComponent("Olá! Gostaria de saber quando os agendamentos desta empresa estarão disponíveis novamente.")}`} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" /> Falar pelo WhatsApp</a></Button></CardContent></Card></div>;
 
   return <main style={brandCssVariables(themeBrand)} className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-primary/[0.06] px-4 py-8 sm:py-12">
     <div className="mx-auto max-w-2xl">
