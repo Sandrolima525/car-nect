@@ -149,6 +149,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             {current && current.to !== "/dashboard" && <Breadcrumb className="hidden sm:block"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink asChild><Link to="/dashboard">Início</Link></BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{current.label}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>}
           </div>
       <div className="flex items-center gap-2">
+          {profile?.role !== "master" && accessExpiresAt && (() => {
+            const remainingDays = Math.max(0, Math.ceil((new Date(accessExpiresAt).getTime() - Date.now()) / 86400000));
+            const warning = remainingDays <= 7;
+            const urgent = remainingDays <= 3;
+            const label = remainingDays === 0 ? "Expirado" : `${remainingDays} ${remainingDays === 1 ? "dia" : "dias"}`;
+            return <div title={`Acesso válido até ${new Date(accessExpiresAt).toLocaleDateString("pt-BR")}`} className={cn("flex h-9 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold shadow-sm", urgent ? "border-destructive/30 bg-destructive/10 text-destructive" : warning ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400" : "border-primary/20 bg-primary/10 text-primary")}><Clock3 className="h-4 w-4 shrink-0" /><span className="hidden sm:inline">Acesso:</span><span>{label}</span></div>;
+          })()}
           <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
             <DropdownMenuTrigger asChild><button type="button" className="relative flex h-9 w-9 items-center justify-center rounded-xl border bg-background text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground" aria-label="Notificações"><Bell className="h-[18px] w-[18px]" />{unreadNotifications > 0 && <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground ring-2 ring-background">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}</button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[min(360px,calc(100vw-1.5rem))] p-0">
