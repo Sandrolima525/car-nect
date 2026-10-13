@@ -29,7 +29,36 @@ function ConfiguracoesPage(){
  useEffect(()=>{void(async()=>{try{const id=await getCurrentCompanyId();const p=await supabase.from("profiles").select("role").eq("company_id",id).maybeSingle();if(p.error)throw p.error;if(p.data?.role!=="owner")throw new Error("Somente o dono da empresa pode acessar estas configurações.");const c=await (supabase as any).from("companies").select("name,logo_url,whatsapp_number,phone,business_hours,booking_interval_minutes,booking_min_advance_minutes,brand_colors,public_booking_slug,simultaneous_capacity").eq("id",id).single();if(c.error)throw c.error;setCompanyId(id);setBookingSlug(c.data?.public_booking_slug??"");setCompanyName(c.data?.name??"");setLogoUrl(c.data?.logo_url??"");setWhatsapp(c.data?.whatsapp_number??c.data?.phone??"");setBrand({...DEFAULT_BRAND,...(c.data?.brand_colors??{})});setPalette(Object.values({...DEFAULT_BRAND,...(c.data?.brand_colors??{})}));setHours({...defaultHours,...(c.data?.business_hours??{})});setInterval(String(c.data?.booking_interval_minutes??15));setAdvance(String(c.data?.booking_min_advance_minutes??0));setCapacity(String(c.data?.simultaneous_capacity??2));await loadBlocks(id);}catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar as configurações.");}finally{setLoading(false)}})()},[]);
 
  const save=async()=>{try{setSaving(true);setError("");setMessage("");const payload={name:companyName.trim()||"Empresa",logo_url:logoUrl.trim()||null,whatsapp_number:whatsapp.replace(/\D/g,"")||null,business_hours:hours,booking_interval_minutes:Math.max(5,Number(interval)||15),booking_min_advance_minutes:Math.max(0,Number(advance)||0),simultaneous_capacity:Math.max(1,Number(capacity)||2),brand_colors:{primary:normalizeHex(brand.primary,DEFAULT_BRAND.primary),secondary:normalizeHex(brand.secondary,DEFAULT_BRAND.secondary),accent:normalizeHex(brand.accent,DEFAULT_BRAND.accent)},updated_at:new Date().toISOString()};const r=await (supabase as any).from("companies").update(payload).eq("id",companyId);if(r.error)throw r.error;window.dispatchEvent(new CustomEvent("brand-theme-updated",{detail:payload.brand_colors}));setMessage("Configurações salvas.");}catch(e){setError(e instanceof Error?e.message:"Não foi possível salvar.");}finally{setSaving(false)}};
- const uploadLogo=async(file:File)=>{if(!companyId)return;if(!file.type.startsWith("image/"))return setError("Escolha uma imagem.");if(file.size>2*1024*1024)return setError("A logo deve ter no máximo 2 MB.");try{setUploading(true);setError("");const session=await supabase.auth.getSession();if(!session.data.session){throw new Error("Sua sessão expirou. Entre novamente no sistema e tente enviar a logo.");}const extracted=await extractLogoPalette(file).catch(()=>[]);if(extracted.length){setPalette(extracted);setBrand(b=>({...b,primary:extracted[0]??b.primary,secondary:extracted[1]??b.secondary,accent:extracted[2]??b.accent}));}const ext=file.name.split(".").pop()?.toLowerCase()||"png";const path=companyId+"/logo."+ext;const r=await supabase.storage.from("company-logos").upload(path,file,{upsert:true,contentType:file.type});if(r.error)throw r.error;const url=supabase.storage.from("company-logos").getPublicUrl(path).data.publicUrl;setLogoUrl(url);const u=await (supabase as any).from("companies").update({logo_url:url,updated_at:new Date().toISOString()}).eq("id",companyId);if(u.error)throw u.error;setMessage("Logo atualizada.");}catch(e){setError(e instanceof Error?e.message:"Não foi possível enviar a logo.");}finally{setUploading(false)}};
+ const uploadLogo=async(file:File)=>{
+  if(!companyId)return;
+  if(!file.type.startsWith("image/")){setError("Escolha uma imagem.");return;}
+  if(file.size>2*1024*1024){setError("A logo deve ter no máximo 2 MB.");return;}
+  const previousLogoUrl=logoUrl;
+  let uploadedPath:string|undefined;
+  try{
+   setUploading(true);setError("");setMessage("");
+   const session=await supabase.auth.getSession();
+   if(!session.data.session)throw new Error("Sua sessão expirou. Entre novamente no sistema e tente enviar a logo.");
+   const extracted=await extractLogoPalette(file).catch(()=>[]);
+   const ext=file.name.split(".").pop()?.toLowerCase()||"png";
+   // Use a new object path for each upload so browser/CDN caches cannot keep showing the old logo.
+   uploadedPath=`${companyId}/logo-${Date.now()}.${ext}`;
+   const upload=await supabase.storage.from("company-logos").upload(uploadedPath,file,{upsert:false,contentType:file.type,cacheControl:"0"});
+   if(upload.error)throw upload.error;
+   const url=supabase.storage.from("company-logos").getPublicUrl(uploadedPath).data.publicUrl;
+   const update=await (supabase as any).from("companies").update({logo_url:url,updated_at:new Date().toISOString()}).eq("id",companyId).select("id").single();
+   if(update.error)throw update.error;
+   if(!update.data)throw new Error("A imagem foi enviada, mas não foi possível salvar a logo da empresa.");
+   // Only update the preview after storage and database persistence both succeed.
+   setLogoUrl(url);
+   if(extracted.length){setPalette(extracted);setBrand(b=>({...b,primary:extracted[0]??b.primary,secondary:extracted[1]??b.secondary,accent:extracted[2]??b.accent}));}
+   setMessage("Logo atualizada e salva com sucesso.");
+  }catch(e){
+   if(uploadedPath)await supabase.storage.from("company-logos").remove([uploadedPath]).catch(()=>({data:null,error:null}));
+   setLogoUrl(previousLogoUrl);
+   setError(e instanceof Error?e.message:"Não foi possível enviar e salvar a logo.");
+  }finally{setUploading(false)}
+ };
  const addBlock=async()=>{if(!blockDate||!blockStart||!blockEnd||blockEnd<=blockStart)return setError("Informe um intervalo de bloqueio válido.");try{setError("");const r=await (supabase as any).from("booking_blocks").insert({company_id:companyId,block_date:blockDate,start_time:blockStart,end_time:blockEnd,reason:blockReason.trim()||null});if(r.error)throw r.error;setBlockReason("");await loadBlocks(companyId);setMessage("Horário bloqueado.");}catch(e){setError(e instanceof Error?e.message:"Não foi possível bloquear o horário.")}};
  const removeBlock=async(id:string)=>{const r=await (supabase as any).from("booking_blocks").delete().eq("id",id).eq("company_id",companyId);if(r.error)setError(r.error.message);else await loadBlocks(companyId)};
 
